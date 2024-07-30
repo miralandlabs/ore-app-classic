@@ -1512,6 +1512,11 @@ h2:where(.dark, .dark *) {
   color: rgb(75 85 99 / var(--tw-text-opacity));
 }
 
+.text-blue-300 {
+  --tw-text-opacity: 1;
+  color: rgb(147 197 253 / var(--tw-text-opacity));
+}
+
 .text-red-500 {
   --tw-text-opacity: 1;
   color: rgb(239 68 68 / var(--tw-text-opacity));

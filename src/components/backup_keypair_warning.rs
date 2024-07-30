@@ -25,8 +25,8 @@ pub fn BackupKeypairWarning() -> Element {
                 li {
                     Link {
                         to: Route::ExportKey {},
-                        class: "font-bold text-gray-600 hover:underline",
-                        "ACTION: Export my keypair"
+                        class: "font-bold text-blue-300 hover:underline",
+                        "ACTION: Export My Keypair"
                     }
                     " and back it up somewhere safe."
                 }

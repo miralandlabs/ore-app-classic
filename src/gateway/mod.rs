@@ -44,8 +44,8 @@ pub const API_URL: &str = "https://ore-v2-api-lthm.onrender.com"; // MI: dummy
 // royal: ore-app-classic ironforge RPC Endpoint
 pub const RPC_URL: &str = "https://rpc.ironforge.network/mainnet?apiKey=01J3ZM0ECN63VB741S74YPCFWS";
 
-pub const CU_LIMIT_CLAIM: u32 = 11_000;
-pub const CU_LIMIT_STAKE: u32 = 11_000; // MI added
+pub const CU_LIMIT_CLAIM: u32 = 12_000;
+pub const CU_LIMIT_STAKE: u32 = 12_000; // MI added
 pub const CU_LIMIT_MINE: u32 = 500_000;
 
 const RPC_RETRIES: usize = 0;

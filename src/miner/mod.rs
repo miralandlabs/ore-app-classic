@@ -95,7 +95,7 @@ impl Miner {
         &self,
         messages: &Vec<WebWorkerResponse>,
         toolbar_state: &mut Signal<MinerToolbarState>,
-        _proof: &mut Resource<GatewayResult<Proof>>,
+        proof: &mut Resource<GatewayResult<Proof>>,
         gateway: Rc<Gateway>,
         pubkey: Pubkey,
     ) {
@@ -135,7 +135,7 @@ impl Miner {
             // Start mining again
             Ok(_sig) => {
                 // log::info!("Success: {}", sig); // MI
-                // proof.restart();
+                proof.restart();
                 if let MinerStatus::Active = toolbar_state.status() {
                     if let Ok(proof) = gateway.get_proof(pubkey).await {
                         if let Ok(clock) = gateway.get_clock().await {

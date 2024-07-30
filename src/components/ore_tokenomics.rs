@@ -19,7 +19,7 @@ pub fn OreTokenomics() -> Element {
             class: "flex flex-col gap-4 h-full font-hero max-w-3xl w-full mx-auto pb-20 leading-7",
             p {
                 class: "text-4xl font-bold",
-                "ORE tokenomics"
+                "ORE Tokenomics"
             }
             p {
                 "(Coming soon...)"
@@ -28,19 +28,15 @@ pub fn OreTokenomics() -> Element {
                 "Here are the key points:"
                 li {
                     class: "ml-2",
-                    "ORE has a total maximum supply of 21 million tokens."
+                    "ORE has a supply cap of 21 million tokens."
                 }
                 li {
                     class: "ml-2",
-                    "On average, one new ORE token will be mined every minute."
+                    "One new ORE token is mined every minute."
                 }
                 li {
                     class: "ml-2",
                     "It will take ~40 years until the total ORE supply is fully mined."
-                }
-                li {
-                    class: "ml-2",
-                    "You can stake ORE to receive a multiplier on your mining rewards."
                 }
             }
         }

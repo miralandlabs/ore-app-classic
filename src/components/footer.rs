@@ -127,7 +127,7 @@ fn Copyright() -> Element {
     rsx! {
         p {
             class: "text-sm opacity-80",
-            "© 2024 Regolith Labs Inc."
+            "© 2024 Regolith Labs Inc. Adapted by Miraland Labs"
         }
     }
 }

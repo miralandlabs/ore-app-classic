@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "alias": "ore-v2-app-classical.vercel.app",
+  "github": {
+    "enabled": false
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "dist/$1"
+    }
+  ]
+}

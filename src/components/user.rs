@@ -7,16 +7,18 @@ use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 
 use crate::{
     components::{
-        ActivityTable, BackButton, BusBubble, Copyable, OreIcon, SendButton, TreasuryBubble,
-        UserBubble,
+        BackButton, Copyable, OreIcon, SendButton,
     },
-    hooks::{use_explorer_account_url, use_ore_balance_user, use_user_proof, use_user_transfers},
+    hooks::{
+        use_explorer_account_url, use_ore_balance_user, use_user_proof,
+    },
 };
 
 // TODO Not found
 
 #[component]
 pub fn User(id: String) -> Element {
+    // let pubkey = use_pubkey();
     let user_id = Pubkey::from_str(&id);
     let nav = navigator();
     if user_id.is_err() {
@@ -97,7 +99,7 @@ pub fn User(id: String) -> Element {
                                 value: id.clone(),
                                 Link {
                                     class: "{link_class} font-mono",
-                                    to: "{explorer_url}",
+                                    to: explorer_url,
                                     "{id}"
                                 }
                             }
@@ -149,45 +151,46 @@ pub fn User(id: String) -> Element {
                     }
                 }
             }
-            UserActivity {
-                user_id: user_id
-            }
+            // MI
+            // UserActivity {
+            //     user_id: user_id
+            // }
         }
     }
 }
 
-#[component]
-pub fn UserActivity(user_id: Pubkey) -> Element {
-    let offset = use_signal(|| 0u64);
-    let transfers = use_user_transfers(user_id, offset);
-    let e = if let Some(transfers) = transfers.read().clone() {
-        match transfers {
-            Ok(transfers) => {
-                rsx! {
-                    div {
-                        class: "flex flex-col gap-4 grow w-full h-2/3 pb-20 min-h-16 rounded justify-start",
-                        div {
-                            class: "flex flex-row justify-between",
-                            h2 {
-                                class: "text-lg md:text-2xl font-bold",
-                                "Activity"
-                            }
-                        }
-                        ActivityTable {
-                            offset,
-                            transfers,
-                        }
-                    }
-                }
-            }
-            _ => rsx! {},
-        }
-    } else {
-        rsx! {
-            div {
-                class: "flex flex-row h-64 w-full loading rounded",
-            }
-        }
-    };
-    e
-}
+// #[component]
+// pub fn UserActivity(user_id: Pubkey) -> Element {
+//     let offset = use_signal(|| 0u64);
+//     let transfers = use_user_transfers(user_id, offset);
+//     let e = if let Some(transfers) = transfers.read().clone() {
+//         match transfers {
+//             Ok(transfers) => {
+//                 rsx! {
+//                     div {
+//                         class: "flex flex-col gap-4 grow w-full h-2/3 pb-20 min-h-16 rounded justify-start",
+//                         div {
+//                             class: "flex flex-row justify-between",
+//                             h2 {
+//                                 class: "text-lg md:text-2xl font-bold",
+//                                 "Activity"
+//                             }
+//                         }
+//                         ActivityTable {
+//                             offset,
+//                             transfers,
+//                         }
+//                     }
+//                 }
+//             }
+//             _ => rsx! {}
+//         }
+//     } else {
+//         rsx! {
+//             div {
+//                 class: "flex flex-row h-64 w-full loading rounded",
+//             }
+//         }
+//     };
+//     e
+// }

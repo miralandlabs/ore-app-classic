@@ -1,10 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::{
-    components::{
-        Appearance, Banner, BannerStyle, CogIcon, Footer, MountWalletAdapter, OreLogoIcon,
-        OreWordmarkIcon,
-    },
+    components::{Appearance, Banner, BannerStyle, CogIcon, Footer, OreLogoIcon, OreWordmarkIcon},
     hooks::use_appearance,
     route::Route,
 };
@@ -20,8 +17,8 @@ pub fn Navbar() -> Element {
             class: "relative min-h-screen flex flex-col text-black dark:bg-black dark:text-white {dark}",
             Banner {
                 style: BannerStyle::Info,
-                link_to: "https://v1.ore.supply",
-                "This is a devnet preview of ORE v2. To use the v1 app, please click here →"
+                link_to: "https://github.com/miralandlabs/ore-app-classical",
+                "This fork does NOT require a relayer or escrow. It's classic, with the key pair stored in your browser's local cache. Source code click here →"
             }
             div {
                 class: "flex w-full",
@@ -37,7 +34,6 @@ pub fn Navbar() -> Element {
                     div {
                         class: "flex flex-row gap-4",
                         SettingsButton {}
-                        MountWalletAdapter {}
                     }
                 }
             }

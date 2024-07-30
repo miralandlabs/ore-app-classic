@@ -7,13 +7,13 @@ pub fn SendDone() -> Element {
         div {
             class: "flex flex-col grow justify-between",
             div {
-                class: "flex flex-col gap-2",
+                class: "flex flex-col gap-3",
                 h2 {
                     "Success!"
                 }
                 p {
                     class: "text-lg",
-                    "You have succesfully transferred ORE."
+                    "You have sent Ore."
                 }
                 // p {
                 //     class: "text-sm text-gray-300 dark:text-gray-700",

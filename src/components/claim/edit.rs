@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 
-use crate::components::{BackButton, WarningIcon};
+use crate::components::WarningIcon;
 
 use super::ClaimStep;
 
@@ -26,25 +26,17 @@ pub fn ClaimEdit(
         div {
             class: "flex flex-col h-full grow justify-between",
             div {
-                class: "flex flex-col gap-4 -mt-3.5 mb-4",
-                BackButton {
-                    onclick: move |_| {
-                        nav.go_back()
-                    }
+                class: "flex flex-col gap-3",
+                h2 {
+                    "Claim"
                 }
-                div {
-                    class: "flex flex-col gap-2",
-                    h2 {
-                        "Claim"
-                    }
-                    p {
-                        class: "text-lg",
-                        "Claim ORE from your miner."
-                    }
-                    p {
-                        class: "text-sm text-gray-300",
-                        "This will transfer ORE to your wallet and decrease your mining multiplier."
-                    }
+                p {
+                    class: "text-lg",
+                    "Select an amount of rewards to claim."
+                }
+                p {
+                    class: "text-sm text-gray-300 dark:text-gray-700",
+                    "Upon claiming, this amount will be added to your balance in the dashboard."
                 }
             }
             div {
@@ -77,11 +69,18 @@ pub fn ClaimEdit(
                     onclick: move |_| {
                         amount_input.set(amount_to_ui_amount(max_rewards, ore_api::consts::TOKEN_DECIMALS).to_string())
                     },
-                    "Max"
+                    "Max: {amount_to_ui_amount(max_rewards, ore_api::consts::TOKEN_DECIMALS)}"
                 }
             }
             div {
                 class: "flex flex-col sm:flex-row gap-2",
+                button {
+                    class: "w-full py-3 rounded font-semibold transition-colors hover-100 active-200",
+                    onclick: move |_| {
+                        nav.go_back();
+                    },
+                    "Cancel"
+                }
                 button {
                     class: "w-full py-3 rounded font-semibold transition-colors transition-opacity text-white bg-green-500 hover:bg-green-600 active:bg-green-700 disabled:opacity-20",
                     disabled: is_disabled,

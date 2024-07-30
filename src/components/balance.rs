@@ -2,24 +2,19 @@ use dioxus::prelude::*;
 use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 
 use crate::{
-    components::{Appearance, OreIcon, QrCodeIcon},
-    hooks::{
-        use_appearance, use_ore_balance, use_proof,
-        use_wallet_adapter::{use_wallet_adapter, WalletAdapter},
-    },
+    components::{Appearance, OreIcon},
+    hooks::{use_appearance, use_ore_balance, use_proof},
     route::Route,
 };
 
 pub fn Balance() -> Element {
     let balance = use_ore_balance();
-    let wallet_adapter = use_wallet_adapter();
-
     if let Some(balance) = balance.cloned() {
         let amount = balance
             .map(|b| b.real_number_string_trimmed())
             .unwrap_or_else(|_| "0.00".to_owned());
 
-        return rsx! {
+        rsx! {
             div {
                 class: "flex flex-row w-full min-h-16 rounded justify-between",
                 div {
@@ -40,39 +35,47 @@ pub fn Balance() -> Element {
                                 "{amount}"
                             }
                         }
-                        if let WalletAdapter::Connected(_) = *wallet_adapter.read() {
-                            div {
-                                class: "flex flex-row gap-4",
-                                QrButton {}
-                                SendButton {}
-                            }
+                        div {
+                            class: "flex flex-row gap-4",
+                            // QrButton {}
+                            SendButton {}
                         }
                     }
                     StakeBalance {}
                 }
             }
-        };
-    }
-
-    rsx! {
-        div {
-            class: "flex flex-row w-full min-h-24 grow loading rounded",
+        }
+    } else {
+        rsx! {
+            div {
+                class: "flex flex-row w-full min-h-24 grow loading rounded",
+            }
         }
     }
 }
 
 pub fn StakeBalance() -> Element {
-    let proof = use_proof();
+    let mut proof = use_proof();
+
+    // MI
+    // TODO Poll stake balance every 3 seconds
+    use_future(move || async move {
+        loop {
+            async_std::task::sleep(std::time::Duration::from_secs(3)).await;
+            proof.restart();
+        }
+    });
+
     if let Some(proof) = *proof.read() {
         if let Ok(proof) = proof {
             return rsx! {
                 div {
-                    class: "flex flex-row grow justify-between mt-4",
+                    class: "flex flex-row grow justify-between mt-4 -mr-2",
                     div {
                         class: "flex flex-col gap-2",
                         p {
-                            class: "font-medium text-sm",
-                            "Stake"
+                            class: "font-medium text-sm text-gray-300",
+                            "Staking balance"
                         }
                         div {
                             class: "flex flex-row gap-2",
@@ -118,23 +121,23 @@ pub fn SendButton(to: Option<String>) -> Element {
     }
 }
 
-#[component]
-pub fn QrButton(to: Option<String>) -> Element {
-    let appearance = use_appearance();
-    let button_color = match *appearance.read() {
-        Appearance::Light => "text-gray-300 hover:text-black ",
-        Appearance::Dark => "text-gray-300 hover:text-white ",
-    };
-    rsx! {
-        Link {
-            to: Route::Pay {},
-            class: "flex h-12 w-12 my-auto rounded-full justify-center text-2xl font-bold transition-all {button_color} hover-100 active-200",
-            QrCodeIcon {
-                class: "w-6 h-6 my-auto",
-            }
-        }
-    }
-}
+// #[component]
+// pub fn QrButton(to: Option<String>) -> Element {
+//     let appearance = use_appearance();
+//     let button_color = match *appearance.read() {
+//         Appearance::Light => "text-gray-300 hover:text-black ",
+//         Appearance::Dark => "text-gray-300 hover:text-white ",
+//     };
+//     rsx! {
+//         Link {
+//             to: Route::Pay {},
+//             class: "flex h-12 w-12 my-auto rounded-full justify-center text-2xl font-bold transition-all {button_color} hover-100 active-200",
+//             QrCodeIcon {
+//                 class: "w-6 h-6 my-auto",
+//             }
+//         }
+//     }
+// }
 
 pub fn ClaimButton() -> Element {
     let appearance = use_appearance();

@@ -9,7 +9,7 @@ use super::StakeStep;
 
 #[component]
 pub fn StakeEdit(
-    step: Signal<StakeStep>,
+    stake_step: Signal<StakeStep>,
     amount_input: Signal<String>,
     parsed_amount: u64,
 ) -> Element {
@@ -94,7 +94,7 @@ pub fn StakeEdit(
                     class: "w-full py-3 rounded font-semibold transition-colors transition-opacity text-white bg-green-500 hover:bg-green-600 active:bg-green-700 disabled:opacity-20",
                     disabled: is_disabled,
                     onclick: move |_| {
-                        step.set(StakeStep::Confirm);
+                        stake_step.set(StakeStep::Confirm);
                     },
                     "Review"
                 }

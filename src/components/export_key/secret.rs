@@ -28,7 +28,7 @@ pub fn ExportKeySecret() -> Element {
             Copyable {
                 class: "mx-auto break-all text-wrap text-center",
                 value: keypair.to_base58_string(),
-                large_button: true,
+                implicit: false,
                 "{keypair.to_base58_string()}"
             }
             Link {

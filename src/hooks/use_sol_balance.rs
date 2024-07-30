@@ -1,36 +1,43 @@
 use dioxus::prelude::*;
 
-use crate::gateway::{escrow_pubkey, GatewayError, GatewayResult};
+use crate::gateway::{GatewayError, GatewayResult};
 
-use super::{
-    use_gateway,
-    use_wallet_adapter::{use_wallet_adapter, WalletAdapter},
-};
+use super::{use_gateway, use_pubkey};
 
 pub fn use_sol_balance() -> Resource<GatewayResult<u64>> {
-    let wallet_adapter = use_wallet_adapter();
-    use_resource(move || async move {
-        match *wallet_adapter.read() {
-            WalletAdapter::Disconnected => Err(GatewayError::AccountNotFound.into()),
-            WalletAdapter::Connected(pubkey) => use_gateway()
-                .rpc
-                .get_balance(&pubkey)
-                .await
-                .map_err(GatewayError::from),
-        }
-    })
-}
+    let address = use_pubkey();
+    let gateway = use_gateway();
+    use_resource(move || {
+        let gateway = gateway.clone();
+        async move {
+            // MI
+            // gateway
+            //     .rpc
+            //     .get_balance(&address)
+            //     .await
+            //     .map_err(GatewayError::from)
 
-pub fn use_escrow_sol_balance() -> Resource<GatewayResult<u64>> {
-    let wallet_adapter = use_wallet_adapter();
-    use_resource(move || async move {
-        match *wallet_adapter.read() {
-            WalletAdapter::Disconnected => Err(GatewayError::AccountNotFound.into()),
-            WalletAdapter::Connected(pubkey) => use_gateway()
+            // MI
+            match gateway
                 .rpc
-                .get_balance(&escrow_pubkey(pubkey))
+                .get_balance(&address)
                 .await
-                .map_err(GatewayError::from),
+            {
+                Ok(sol_balance) => {
+                    GatewayResult::Ok(sol_balance)
+                }
+                Err(err) => {
+                    let err = GatewayError::from(err);
+                    match err {
+                        GatewayError::AccountNotFound => {
+                            GatewayResult::Ok(0u64)
+                        }
+                        _ => {
+                            GatewayResult::Err(err)
+                        }
+                    }
+                }
+            }
         }
     })
 }

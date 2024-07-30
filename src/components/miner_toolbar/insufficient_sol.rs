@@ -1,67 +1,51 @@
-use std::ops::Div;
-
 use dioxus::prelude::*;
-use solana_client_wasm::solana_sdk::{
-    compute_budget::ComputeBudgetInstruction, message::Message, native_token::sol_to_lamports,
-    pubkey, pubkey::Pubkey, transaction::Transaction,
-};
-use web_time::Duration;
+use solana_client_wasm::solana_sdk::pubkey::Pubkey;
 
 use crate::{
-    components::{BackButton, InvokeSignature},
-    gateway::{escrow_pubkey, GatewayError, GatewayResult},
+    components::{BackButton, Copyable},
     hooks::{
-        use_escrow, use_gateway, use_miner_toolbar_state,
-        use_wallet_adapter::{use_wallet_adapter, InvokeSignatureStatus, WalletAdapter},
-        ReadMinerToolbarState,
+        use_is_onboarded, use_pubkey, use_sol_balance, IsOnboarded,
     },
-    miner::Miner,
 };
 
-const COLLECTION_ADDRESS: Pubkey = pubkey!("F9gWPbWiMVcT5ftGy4X2fLE4gSDw6kiATgZU8tnCmso6");
-
 #[component]
-pub fn MinerToolbarTopUpOpen(escrow_balance: Resource<GatewayResult<u64>>) -> Element {
-    let wallet_adapter = use_wallet_adapter();
-    let invoke_signature_signal = use_signal(|| InvokeSignatureStatus::Start);
-    let nav = use_navigator();
+pub fn MinerToolbarTopUpOpen() -> Element {
+    let mut sol_balance = use_sol_balance();
+    let mut is_onboarded = use_is_onboarded();
 
-    let tx = use_resource(move || async move {
-        match *wallet_adapter.read() {
-            WalletAdapter::Disconnected => Err(GatewayError::WalletAdapterDisconnected),
-            WalletAdapter::Connected(signer) => {
-                let gateway = use_gateway();
-                let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(50_000);
-                let amount = sol_to_lamports(0.05);
-                let ix_1 = solana_client_wasm::solana_sdk::system_instruction::transfer(
-                    &signer,
-                    &escrow_pubkey(signer),
-                    amount,
-                );
-                let ix_2 = solana_client_wasm::solana_sdk::system_instruction::transfer(
-                    &signer,
-                    &COLLECTION_ADDRESS,
-                    amount.div(50), // 2% fee
-                );
-                let blockhash = gateway.rpc.get_latest_blockhash().await?;
-                let ixs = vec![cu_limit_ix, ix_1, ix_2];
-                let msg = Message::new_with_blockhash(ixs.as_slice(), Some(&signer), &blockhash);
-                let tx = Transaction::new_unsigned(msg);
-                Ok(tx)
+    // TODO Poll balance every 3 seconds
+    use_future(move || async move {
+        loop {
+            async_std::task::sleep(std::time::Duration::from_secs(3)).await;
+            sol_balance.restart();
+        }
+    });
+
+    use_effect(move || {
+        if let Some(Ok(sol_balance)) = *sol_balance.read() {
+            if sol_balance.gt(&0) {
+                is_onboarded.set(IsOnboarded(true));
             }
         }
     });
 
-    let _ = use_resource(move || async move {
-        if let InvokeSignatureStatus::Done(sig) = *invoke_signature_signal.read() {
-            if let WalletAdapter::Connected(signer) = *wallet_adapter.read() {
-                let gateway = use_gateway();
-                async_std::task::sleep(Duration::from_millis(1000)).await;
-                escrow_balance.restart();
-            }
-        };
-        ()
-    });
+    rsx! {
+        MinerToolbarInsufficientBalanceOpen {}
+    }
+}
+
+#[component]
+pub fn MinerToolbarInsufficientBalanceOpen() -> Element {
+    let nav = use_navigator();
+    let pubkey = use_pubkey();
+    let solana_pay_req = solana_pay_sol_request(pubkey, 0.05);
+    let qrcode = qrcode_generator::to_svg_to_string(
+        solana_pay_req,
+        qrcode_generator::QrCodeEcc::Low,
+        192,
+        None::<&str>,
+    )
+    .unwrap();
 
     rsx! {
         div {
@@ -77,26 +61,30 @@ pub fn MinerToolbarTopUpOpen(escrow_balance: Resource<GatewayResult<u64>>) -> El
                     class: "flex flex-col gap-2",
                     p {
                         class: "text-3xl md:text-4xl lg:text-5xl font-bold",
-                        "Top up"
+                        "Top up to pay mining transaction fees"
                     }
                     p {
                         class: "text-lg",
-                        "Fund your account to pay for blockchain transaction fees."
+                        "Scan the QR code from your Solana wallet to top up your miner."
                     }
-                    // p {
-                    //     class: "text-sm text-gray-300",
-                    //     "This will fund your account to automate mining."
-                    // }
+                    p {
+                        class: "text-sm text-gray-300",
+                        "Your miner keypair is stored on your local device and can be exported from settings at anytime."
+                    }
                 }
             }
             div {
                 class: "flex flex-col gap-4",
-                if let Some(Ok(tx)) = tx.cloned() {
-                    InvokeSignature { tx: tx, signal: invoke_signature_signal, start_msg: "Top up" }
-                } else {
+                div {
+                    class: "text-center w-48 h-48 bg-gray-100 mx-auto",
+                    dangerous_inner_html: "{qrcode}",
+                }
+                Copyable {
+                    class: "mx-auto max-w-full",
+                    value: pubkey.to_string(),
                     p {
-                        class: "font-medium text-center text-sm text-gray-300 hover:underline",
-                        "Loading..."
+                        class: "rounded p-2 font-mono font-medium truncate",
+                        "{pubkey}"
                     }
                 }
                 a {
@@ -111,98 +99,9 @@ pub fn MinerToolbarTopUpOpen(escrow_balance: Resource<GatewayResult<u64>>) -> El
     }
 }
 
-#[component]
-pub fn MinerToolbarCreateAccountOpen(escrow_balance: Resource<GatewayResult<u64>>) -> Element {
-    let wallet_adapter = use_wallet_adapter();
-    let invoke_signature_signal = use_signal(|| InvokeSignatureStatus::Start);
-    let mut escrow = use_escrow();
-    let nav = use_navigator();
-
-    let tx = use_resource(move || async move {
-        match *wallet_adapter.read() {
-            WalletAdapter::Disconnected => Err(GatewayError::WalletAdapterDisconnected),
-            WalletAdapter::Connected(signer) => {
-                let gateway = use_gateway();
-                let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(500_000);
-                let amount = sol_to_lamports(0.05);
-                let ix_1 = ore_relayer_api::instruction::open_escrow(signer, signer);
-                let ix_2 = solana_client_wasm::solana_sdk::system_instruction::transfer(
-                    &signer,
-                    &escrow_pubkey(signer),
-                    amount,
-                );
-                let ix_3 = solana_client_wasm::solana_sdk::system_instruction::transfer(
-                    &signer,
-                    &COLLECTION_ADDRESS,
-                    amount.div(50), // 2% fee
-                );
-                let blockhash = gateway.rpc.get_latest_blockhash().await?;
-                let ixs = vec![cu_limit_ix, ix_1, ix_2, ix_3];
-                let msg = Message::new_with_blockhash(ixs.as_slice(), Some(&signer), &blockhash);
-                let tx = Transaction::new_unsigned(msg);
-                Ok(tx)
-            }
-        }
-    });
-
-    let _ = use_resource(move || async move {
-        if let InvokeSignatureStatus::Done(sig) = *invoke_signature_signal.read() {
-            if let WalletAdapter::Connected(signer) = *wallet_adapter.read() {
-                let gateway = use_gateway();
-                async_std::task::sleep(Duration::from_millis(1000)).await;
-                if let Ok(new_escrow) = gateway.get_escrow(signer).await {
-                    escrow.set(new_escrow);
-                    escrow_balance.restart();
-                }
-            }
-        };
-        ()
-    });
-
-    rsx! {
-        div {
-            class: "flex flex-col h-full w-full grow gap-12 sm:gap-16 justify-between",
-            div {
-                class: "flex flex-col gap-4 -mt-3.5 mb-4",
-                BackButton {
-                    onclick: move |_| {
-                        nav.go_back()
-                    }
-                }
-                div {
-                    class: "flex flex-col gap-2",
-                    p {
-                        class: "text-3xl md:text-4xl lg:text-5xl font-bold",
-                        "New account"
-                    }
-                    p {
-                        class: "text-lg",
-                        "Open a new account to start mining."
-                    }
-                    p {
-                        class: "text-sm text-gray-300",
-                        "This will open a new account on the Solana blockchain to secure your miner rewards."
-                    }
-                }
-            }
-            div {
-                class: "flex flex-col gap-4",
-                if let Some(Ok(tx)) = tx.cloned() {
-                    InvokeSignature { tx: tx, signal: invoke_signature_signal, start_msg: "Create account" }
-                } else {
-                    p {
-                        class: "font-medium text-center text-sm text-gray-300 hover:underline",
-                        "Loading..."
-                    }
-                }
-                a {
-                    // TODO Get referal code
-                    href: "https://www.coinbase.com/price/solana",
-                    target: "_blank",
-                    class: "font-medium text-center py-2 text-sm text-gray-300 hover:underline",
-                    "Help! I don't have any SOL."
-                }
-            }
-        }
-    }
+fn solana_pay_sol_request(pubkey: Pubkey, amount: f64) -> String {
+    format!(
+        "solana:{}?amount={}&label=Ore&message=Topping%20up%20Ore%20miner",
+        pubkey, amount
+    )
 }

@@ -1,29 +1,19 @@
-use dioxus::prelude::*;
-use ore_types::{response::ListTransfersResponse, Transfer, TransferType};
-use solana_client_wasm::solana_sdk::pubkey::Pubkey;
 use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 use web_time::{Duration, SystemTime, UNIX_EPOCH};
 
+use dioxus::prelude::*;
+use ore_types::{response::ListTransfersResponse, Transfer, TransferType};
+
 use crate::{
-    components::{Appearance, GlobeIcon, OreIcon, UserBubble, UserIcon},
-    hooks::{use_appearance, use_transfers, ActivityFilter, ACTIVITY_TABLE_PAGE_LIMIT},
+    components::{GlobeIcon, OreIcon, UserBubble, UserIcon},
+    hooks::{use_pubkey, use_transfers, ActivityFilter, ACTIVITY_TABLE_PAGE_LIMIT},
     route::Route,
 };
-
-use super::wallet_adapter;
 
 pub fn Activity() -> Element {
     let filter = use_signal(|| ActivityFilter::Global);
     let offset = use_signal(|| 0u64);
-    let mut transfers = use_transfers(filter, offset);
-
-    use_future(move || async move {
-        loop {
-            async_std::task::sleep(Duration::from_secs(30)).await;
-            transfers.restart();
-        }
-    });
-
+    let transfers = use_transfers(filter, offset);
     let e = if let Some(transfers) = transfers.read().clone() {
         match transfers {
             Ok(transfers) => {
@@ -48,7 +38,7 @@ pub fn Activity() -> Element {
                     }
                 }
             }
-            _ => rsx! {},
+            _ => rsx! {}
         }
     } else {
         rsx! {
@@ -63,25 +53,20 @@ pub fn Activity() -> Element {
 #[component]
 pub fn FilterButtons(filter: Signal<ActivityFilter>, offset: Signal<u64>) -> Element {
     let selected_class = "";
-    let unselected_class = "text-gray-300";
+    let unselected_class = "text-gray-300 dark:text-gray-700";
     let (global_class, personal_class) = match *filter.read() {
         ActivityFilter::Global => (selected_class, unselected_class),
         ActivityFilter::Personal => (unselected_class, selected_class),
     };
-    let appearance = use_appearance();
-    let hover_class = match *appearance.read() {
-        Appearance::Light => "hover:text-black ",
-        Appearance::Dark => "hover:text-white ",
-    };
     let button_class =
-        "flex flex-row gap-2 h-10 rounded-full text-xs w-10 sm:w-min sm:px-3 md:text-sm hover-100 active-200 transition-colors transition-transform";
-    let icon_class = "w-4 h-4 md:w-5 md:h-5 m-auto";
+        "flex flex-row gap-2 px-2 md:px-3 py-2 rounded-full text-xs md:text-sm hover-100 active-200 transition-colors";
+    let icon_class = "w-4 h-4 md:w-5 md:h-5 my-auto";
 
     rsx! {
         div {
-            class: "flex flex-row gap-4 font-semibold -mx-1 md:-mx-2",
+            class: "flex flex-row gap-1 md:gap-2 font-semibold -mx-1 md:-mx-2",
             button {
-                class: "{button_class} {personal_class} {hover_class}",
+                class: "{button_class} {personal_class}",
                 onclick: move |_e| {
                     filter.set(ActivityFilter::Personal);
                     offset.set(0);
@@ -89,13 +74,10 @@ pub fn FilterButtons(filter: Signal<ActivityFilter>, offset: Signal<u64>) -> Ele
                 UserIcon {
                     class: "{icon_class}"
                 }
-                span {
-                    class: "my-auto hidden sm:block",
-                    "Personal"
-                }
+                "Personal"
             }
             button {
-                class: "{button_class} {global_class} {hover_class}",
+                class: "{button_class} {global_class}",
                 onclick: move |_| {
                     filter.set(ActivityFilter::Global);
                     offset.set(0);
@@ -103,10 +85,7 @@ pub fn FilterButtons(filter: Signal<ActivityFilter>, offset: Signal<u64>) -> Ele
                 GlobeIcon {
                     class: "{icon_class}"
                 }
-                span {
-                    class: "my-auto hidden sm:block",
-                    "Global"
-                }
+                "Global"
             }
         }
     }
@@ -124,8 +103,7 @@ pub fn ActivityTable(offset: Signal<u64>, transfers: ListTransfersResponse) -> E
     } else {
         rsx! {
             div {
-                // class: "flex flex-col gap-4 -mx-2 sm:mx-0",
-                class: "flex flex-col gap-4",
+                class: "flex flex-col gap-4 -mx-2 sm:mx-0",
                 div {
                     class: "h-full w-full max-w-full",
                     for transfer in transfers.data {
@@ -178,8 +156,7 @@ pub fn ActivityTablePagination(offset: Signal<u64>, has_more: bool) -> Element {
 
 #[component]
 pub fn ActivityRow(transfer: Transfer) -> Element {
-    // TODO let pubkey = use_pubkey();
-    let pubkey = Pubkey::new_from_array([0; 32]);
+    let pubkey = use_pubkey();
     let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
     let ts = Duration::from_secs(transfer.ts as u64);
     let time = now.saturating_sub(ts);
@@ -201,11 +178,10 @@ pub fn ActivityRow(transfer: Transfer) -> Element {
         TransferType::Claim => "claimed",
         TransferType::Mine => "mined",
         TransferType::Spl => "sent",
-        TransferType::Upgrade => "upgraded",
     };
 
     let addr_a = match transfer.transfer_type {
-        TransferType::Claim | TransferType::Mine | TransferType::Upgrade => {
+        TransferType::Claim | TransferType::Mine => {
             if transfer.to_address.eq(&pubkey.to_string()) {
                 "You".to_string()
             } else {
@@ -221,9 +197,7 @@ pub fn ActivityRow(transfer: Transfer) -> Element {
         }
     };
     let addr_a_link = match transfer.transfer_type {
-        TransferType::Claim | TransferType::Mine | TransferType::Upgrade => {
-            transfer.to_address.clone()
-        }
+        TransferType::Claim | TransferType::Mine => transfer.to_address.clone(),
         TransferType::Spl => transfer.from_address,
     };
     let addr_a_class = if addr_a.eq(&"You".to_string()) {
@@ -236,12 +210,12 @@ pub fn ActivityRow(transfer: Transfer) -> Element {
         "You".to_string()
     } else {
         match transfer.transfer_type {
-            TransferType::Claim | TransferType::Mine | TransferType::Upgrade => "".to_string(),
+            TransferType::Claim | TransferType::Mine => "".to_string(),
             TransferType::Spl => transfer.to_address[..5].to_string(),
         }
     };
     let addr_b_link = match transfer.transfer_type {
-        TransferType::Claim | TransferType::Mine | TransferType::Upgrade => "".to_string(),
+        TransferType::Claim | TransferType::Mine => "".to_string(),
         TransferType::Spl => transfer.to_address,
     };
     let addr_b_class = if addr_b.eq(&"You".to_string()) {
@@ -269,9 +243,6 @@ pub fn ActivityRow(transfer: Transfer) -> Element {
                         class: "flex flex-row gap-1.5 text-wrap flex-wrap",
                         Link {
                             to: Route::User { id: addr_a_link },
-                            onclick: move |e: Event<MouseData>| {
-                                e.stop_propagation();
-                            },
                             span {
                                 class: "{addr_a_class} hover:underline",
                                 "{addr_a}"
@@ -279,9 +250,9 @@ pub fn ActivityRow(transfer: Transfer) -> Element {
                         }
                         "{action} "
                         span {
-                            class: "flex flex-row font-semibold gap-1",
+                            class: "flex flex-row font-semibold gap-[0.16rem]",
                             OreIcon {
-                                class: "ml-0.5 w-4 h-4 my-auto",
+                                class: "ml-0.5 w-3.5 h-3.5 my-auto",
                             }
                             "{amount_to_ui_amount(transfer.amount as u64, ore_api::consts::TOKEN_DECIMALS)}"
                         }
@@ -297,7 +268,7 @@ pub fn ActivityRow(transfer: Transfer) -> Element {
                         }
                     }
                     p {
-                        class: "text-gray-300 text-nowrap text-sm",
+                        class: "opacity-50 text-nowrap text-sm",
                         "{time_str}"
                     }
                 }

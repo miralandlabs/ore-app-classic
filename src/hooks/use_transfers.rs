@@ -4,7 +4,7 @@ use solana_client_wasm::solana_sdk::pubkey::Pubkey;
 
 use crate::gateway::GatewayResult;
 
-use super::{use_escrow, use_gateway};
+use super::{use_gateway, use_pubkey};
 
 pub const ACTIVITY_TABLE_PAGE_LIMIT: usize = 8;
 
@@ -33,7 +33,7 @@ pub fn use_user_transfers(
         async move {
             let offset = *offset.read();
             gateway
-                .list_transfers(Some(user_id), offset, ACTIVITY_TABLE_PAGE_LIMIT)
+                ._list_transfers(Some(user_id), offset, ACTIVITY_TABLE_PAGE_LIMIT)
                 .await
         }
     })
@@ -43,15 +43,19 @@ pub fn use_transfers(
     filter: Signal<ActivityFilter>,
     offset: Signal<u64>,
 ) -> Resource<GatewayResult<ListTransfersResponse>> {
-    let escrow = use_escrow();
-    use_resource(move || async move {
-        let offset = *offset.read();
-        let user = match *filter.read() {
-            ActivityFilter::Global => None,
-            ActivityFilter::Personal => Some(escrow.read().authority),
-        };
-        use_gateway()
-            .list_transfers(user, offset, ACTIVITY_TABLE_PAGE_LIMIT)
-            .await
+    let gateway = use_gateway();
+    let pubkey = use_pubkey();
+    use_resource(move || {
+        let gateway = gateway.clone();
+        async move {
+            let offset = *offset.read();
+            let user = match *filter.read() {
+                ActivityFilter::Global => None,
+                ActivityFilter::Personal => Some(pubkey),
+            };
+            gateway
+                ._list_transfers(user, offset, ACTIVITY_TABLE_PAGE_LIMIT)
+                .await
+        }
     })
 }

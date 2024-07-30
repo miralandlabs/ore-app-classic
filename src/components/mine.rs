@@ -1,15 +1,15 @@
 use dioxus::prelude::*;
-use ore_relayer_api::state::Escrow;
+// use ore_relayer_api::state::Escrow;
 use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 
 use crate::{
     components::{
-        Activity, BackButton, Balance, MinerToolbarCreateAccountOpen, MinerToolbarTopUpOpen,
+        BackButton, MinerToolbarTopUpOpen,
         OreIcon, Spinner, MIN_BALANCE,
     },
     hooks::{
-        use_escrow, use_escrow_sol_balance, use_gateway, use_miner_toolbar_state, use_power_level,
-        use_proof, MinerStatus, MinerStatusMessage, PowerLevel, ReadMinerToolbarState,
+        use_gateway, use_miner_toolbar_state, use_power_level, use_priority_fee,
+        use_proof, use_sol_balance, MinerStatus, MinerStatusMessage, PowerLevel, PriorityFee, ReadMinerToolbarState,
     },
     miner::WEB_WORKERS,
 };
@@ -19,25 +19,14 @@ use crate::{
 // TODO Stop start button
 
 pub fn Mine() -> Element {
-    let mut escrow_balance = use_escrow_sol_balance();
+    let sol_balance = use_sol_balance();
     let toolbar_state = use_miner_toolbar_state();
-    let escrow = use_escrow();
     let nav = use_navigator();
 
-    if escrow.read().eq(&Escrow::default()) {
-        return rsx! {
-            MinerToolbarCreateAccountOpen {
-                escrow_balance: escrow_balance.clone()
-            }
-        };
-    }
-
-    if let Some(Ok(balance)) = *escrow_balance.read() {
+    if let Some(Ok(balance)) = *sol_balance.read() {
         if balance.lt(&MIN_BALANCE) {
             return rsx! {
-                MinerToolbarTopUpOpen {
-                    escrow_balance: escrow_balance.clone()
-                }
+                MinerToolbarTopUpOpen {}
             };
         }
     }
@@ -115,12 +104,22 @@ pub fn Mine() -> Element {
             StakeBalanceDisplay {}
             MultiplierDisplay {}
             PowerLevelConfig {}
+            PriorityFeeConfig {}
+            DownloadLink {}
+
         }
     }
 }
 
 pub fn StakeBalanceDisplay() -> Element {
-    let proof = use_proof();
+    let mut proof = use_proof();
+
+    use_future(move || async move {
+        loop {
+            async_std::task::sleep(std::time::Duration::from_secs(3)).await;
+            proof.restart();
+        }
+    });
 
     rsx! {
             div {
@@ -188,7 +187,7 @@ pub fn MultiplierDisplay() -> Element {
                div {
                     class: "flex flex-row flex-shrink h-min gap-1 shrink mb-auto",
                     p {
-                        class: "text-white text-right px-1 mb-auto font-semibold",
+                        class: "dark:text-white text-right px-1 mb-auto font-semibold",
                         "{multiplier.read().unwrap_or(1.0):.12}x"
                     }
                 }
@@ -217,7 +216,7 @@ pub fn PowerLevelConfig() -> Element {
                 div {
                     class: "flex flex-row flex-shrink h-min gap-1 shrink mb-auto",
                     input {
-                        class: "bg-transparent text-white text-right px-1 mb-auto rounded font-semibold transition-colors",
+                        class: "bg-transparent dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
                         dir: "rtl",
                         step: 1,
                         min: 1,
@@ -231,7 +230,7 @@ pub fn PowerLevelConfig() -> Element {
                         }
                     }
                     p {
-                        class: "my-auto",
+                        class: "my-auto font-semibold",
                         "of {max} cores"
                     }
                 }
@@ -242,4 +241,71 @@ pub fn PowerLevelConfig() -> Element {
             // }
         // }
     }
+}
+
+pub fn PriorityFeeConfig() -> Element {
+    let mut priority_fee = use_priority_fee();
+
+    rsx! {
+        div {
+            class: "flex flex-row gap-8 justify-between",
+            div {
+                class: "flex flex-col gap-1",
+                p {
+                    class: "text-gray-300 font-medium text-sm my-auto",
+                    "Priority fee"
+                }
+                p {
+                    class: "text-gray-300 text-xs opacity-80 max-w-96",
+                    "Add a priority fee to increase your chances of landing a transaction during blockchain congestion."
+                }
+           }
+           div {
+                class: "flex flex-row flex-shrink h-min gap-1 shrink mb-auto",
+                input {
+                    class: "bg-transparent dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
+                    dir: "rtl",
+                    step: 100_000,
+                    min: 0,
+                    max: 10_000_000,
+                    r#type: "number",
+                    value: "{priority_fee.read().0}",
+                    oninput: move |e| {
+                        if let Ok(v) = e.value().parse::<u64>() {
+                            priority_fee.set(PriorityFee(v));
+                        }
+                    }
+                }
+                p {
+                    class: "my-auto font-semibold",
+                    "microlamports"
+                }
+            }
+        }
+    }
+}
+
+fn DownloadLink() -> Element {
+    // if cfg!(feature = "web") {
+    //     rsx! {
+    //         div {
+    //             class: "flex flex-row gap-2 mt-8 p-2.5 rounded bg-green-600",
+    //             WarningIcon {
+    //                 class: "w-4 h-4 mt-0.5 shrink-0"
+    //             }
+    //             p {
+    //                 class: "text-sm my-auto",
+    //                 "You are mining from a web browser. For better performance, "
+    //                 Link {
+    //                     to: Route::Download {},
+    //                     class: "font-medium underline",
+    //                     "download the app."
+    //                 }
+    //             }
+    //         }
+    //     }
+    // } else {
+    //     None
+    // }
+    rsx! {}
 }

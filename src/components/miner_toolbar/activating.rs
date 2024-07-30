@@ -1,34 +1,41 @@
 use dioxus::prelude::*;
-use ore_relayer_api::state::Escrow;
 use solana_client_wasm::solana_sdk::native_token::LAMPORTS_PER_SOL;
-use solana_sdk::native_token::sol_to_lamports;
 
 use crate::{
     components::{try_start_mining, Spinner},
     hooks::{
-        use_escrow, use_escrow_sol_balance, use_miner_toolbar_state, MinerStatus,
-        MinerStatusMessage, ReadMinerToolbarState, UpdateMinerToolbarState,
+        use_gateway, use_miner_toolbar_state, use_sol_balance, MinerStatus, MinerStatusMessage,
+        UpdateMinerToolbarState,
     },
     miner::Miner,
     route::Route,
 };
 
-pub const RENT_MIN_BALANCE: u64 = 1392000;
-pub const MIN_BALANCE: u64 = LAMPORTS_PER_SOL.saturating_div(1000) + RENT_MIN_BALANCE;
+// MI, 100 => 0.01SOL
+pub const MIN_BALANCE: u64 = LAMPORTS_PER_SOL.saturating_div(100);
 
 #[component]
 pub fn MinerToolbarActivating(miner: Signal<Miner>) -> Element {
-    let mut toolbar_state = use_miner_toolbar_state();
-    let mut escrow_balance = use_escrow_sol_balance();
-    let escrow = use_escrow();
     let nav = use_navigator();
+    let gateway = use_gateway();
+    let sol_balance = use_sol_balance();
+    // let mut sufficient_balance = use_signal(|| true);
+    let mut toolbar_state = use_miner_toolbar_state();
 
-    // Start mining if the escrow account exists
-    let _ = use_resource(move || async move {
-        if escrow.read().ne(&Escrow::default()) {
-            if let Some(Ok(balance)) = *escrow_balance.read() {
+    // use_effect(move || {
+    //     if let Some(Ok(sol_balance)) = *sol_balance.read() {
+    //         sufficient_balance.set(sol_balance.ge(&MIN_BALANCE));
+    //     } else {
+    //         sufficient_balance.set(false);
+    //     }
+    // });
+
+    let _ = use_resource(move || {
+        let gateway = gateway.clone();
+        async move {
+            if let Some(Ok(balance)) = *sol_balance.read() {
                 if balance.ge(&MIN_BALANCE) {
-                    match try_start_mining(miner, escrow, &mut toolbar_state).await {
+                    match try_start_mining(gateway, miner, &mut toolbar_state).await {
                         Ok(()) => {
                             toolbar_state.set_status(MinerStatus::Active);
                         }
@@ -43,11 +50,7 @@ pub fn MinerToolbarActivating(miner: Signal<Miner>) -> Element {
         }
     });
 
-    if escrow.read().eq(&Escrow::default()) {
-        nav.push(Route::Mine {});
-    }
-
-    if let Some(Ok(balance)) = *escrow_balance.read() {
+    if let Some(Ok(balance)) = *sol_balance.read() {
         if balance.lt(&MIN_BALANCE) {
             nav.push(Route::Mine {});
         }

@@ -1,8 +1,8 @@
 use dioxus::prelude::*;
 
 use crate::components::{
-    Claim, Download, Home, Landing, Mine, MinerToolbarLayout, Navbar, OreTokenomics, PageNotFound,
-    Pay, Send, Settings, SimpleNavbar, Stake, Tx, Upgrade, User, WhatIsMining,
+    Claim, Download, ExportKey, Home, ImportKey, Landing, Mine, MinerToolbarLayout, Navbar, OreTokenomics,
+    PageNotFound, Send, Settings, SimpleNavbar, Stake, User, WhatIsMining,
 };
 
 #[rustfmt::skip]
@@ -32,22 +32,26 @@ pub enum Route {
             Stake {},
             #[route("/settings")]
             Settings {},
+            #[route("/settings/export-key")]
+            ExportKey {},
+            #[route("/settings/import-key")]
+            ImportKey {},
             #[route("/send/:to")]
             Send {
                 to: String
             },
-            #[route("/pay")]
-            Pay {},
-            #[route("/tx/:sig")]
-            Tx {
-                sig: String,
-            },
+            // #[route("/pay")]
+            // Pay {},
+            // #[route("/tx/:sig")]
+            // Tx {
+            //     sig: String,
+            // },
             #[route("/u/:id")]
             User {
                 id: String,
             },
-            #[route("/upgrade")]
-            Upgrade {}, 
+            // #[route("/upgrade")]
+            // Upgrade {}, 
         #[end_layout]
     #[end_layout]
 

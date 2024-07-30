@@ -29,6 +29,8 @@ pub struct WebWorkerResponse {
 
 #[wasm_bindgen]
 pub fn start_worker() {
+    log::info!("Starting webworker"); // MI
+
     let self_ = js_sys::global();
     let js_value = std::ops::Deref::deref(&self_);
     let scope = DedicatedWorkerGlobalScope::unchecked_from_js_ref(js_value);
@@ -57,6 +59,7 @@ fn worker_options() -> WorkerOptions {
 }
 
 pub fn create_web_worker(cx: UseChannel<WebWorkerResponse>) -> Worker {
+    log::info!("Creating webworker..."); // MI
     let worker = Worker::new_with_options("worker.js", &worker_options()).unwrap();
 
     // On message
@@ -74,12 +77,12 @@ pub fn create_web_worker(cx: UseChannel<WebWorkerResponse>) -> Worker {
     )));
 
     // On error
-    // worker.set_onerror(Some(&js_sys::Function::unchecked_from_js(
-    //     Closure::<dyn Fn(MessageEvent)>::new(move |e: MessageEvent| {
-    //         log::info!("Error from worker: {:?}", e.data());
-    //     })
-    //     .into_js_value(),
-    // )));
+    worker.set_onerror(Some(&js_sys::Function::unchecked_from_js(
+        Closure::<dyn Fn(MessageEvent)>::new(move |e: MessageEvent| {
+            log::info!("Error from webworker: {:?}", e.data());
+        })
+        .into_js_value(),
+    )));
 
     worker
 }
@@ -112,6 +115,7 @@ pub fn find_next_hash(
 
         // Break if time has elapsed and batch size is processed
         if nonce % 20 == 0 {
+            // log::info!("Hash: {:?} {:?}", i, nonce);
             if timer.elapsed().as_secs().gt(&cutoff_time) {
                 if i.ge(&100) {
                     break;

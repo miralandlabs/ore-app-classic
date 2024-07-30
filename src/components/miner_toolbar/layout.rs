@@ -2,10 +2,7 @@ use dioxus::prelude::*;
 
 use crate::{
     components::MinerToolbar,
-    hooks::{
-        use_miner_toolbar_state, use_miner_toolbar_state_provider, ReadMinerToolbarState,
-        UpdateMinerToolbarState,
-    },
+    hooks::use_miner_toolbar_state_provider,
     Route,
 };
 
@@ -14,7 +11,9 @@ pub fn MinerToolbarLayout() -> Element {
     let route = use_route::<Route>();
     let hidden = !matches!(
         route,
-        Route::Home {} | Route::Tx { .. } | Route::User { .. }
+        // MI, remove Tx
+        // Route::Home {} | Route::Tx { .. } | Route::User { .. }
+        Route::Home {} | Route::User { .. }
     );
 
     rsx! {

@@ -15,18 +15,18 @@ pub enum StakeStep {
 }
 
 pub fn Stake() -> Element {
-    let step = use_signal(|| StakeStep::Edit);
+    let stake_step = use_signal(|| StakeStep::Edit);
     let amount_input = use_signal(|| "".to_string());
     let parsed_amount: u64 = match amount_input.read().parse::<f64>() {
         Ok(n) => (n * 10f64.powf(ore_api::consts::TOKEN_DECIMALS.into())) as u64,
         Err(_) => 0,
     };
 
-    let e = match *step.read() {
+    let e = match *stake_step.read() {
         StakeStep::Edit => {
             rsx! {
                 StakeEdit {
-                    step,
+                    stake_step,
                     amount_input,
                     parsed_amount,
                 }
@@ -35,7 +35,7 @@ pub fn Stake() -> Element {
         StakeStep::Confirm => {
             rsx! {
                 StakeConfirm {
-                    step,
+                    stake_step,
                     amount: parsed_amount,
                 }
             }

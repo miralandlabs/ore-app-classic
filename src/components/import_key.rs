@@ -19,6 +19,14 @@ pub enum ImportKeyStep {
 pub fn ImportKey() -> Element {
     let mut step = use_signal(|| ImportKeyStep::Loading);
     let sol_balance = use_sol_balance();
+    // TODO investigate use_effect
+    // MI: this stmt is to avoid defect of next use_effect of dioxus-web
+    // if comment out this stmt, use_effect cannot handle sol_balance correctly
+    if let Some(Ok(bal)) = *sol_balance.read() {
+        log::info!("sol_balance: {}", bal);
+    } else {
+        log::info!("error occurred executing sol_balance = use_sol_balance()");
+    };
 
     use_effect(move || {
         let current_step = *step.read();
@@ -46,7 +54,7 @@ pub fn ImportKey() -> Element {
                 }
             } else {
                 // TODO This should never happen. Display error
-                None
+                rsx! {}
             }
         }
         ImportKeyStep::Import => {
@@ -117,8 +125,10 @@ fn ImportKeyImport() -> Element {
     let mut private_key_input = use_signal(|| "".to_string());
     let gateway = use_gateway();
     let nav = navigator();
+    // log::info!("OK: to import... {}", *private_key_input.read()); // MI
 
-    use_future(move || {
+    // MI, use_future ==> use_resource
+    let _ = use_resource(move || {
         // let private_key_input = private_key_input.clone();
         // let sol_balance = sol_balance.clone();
         // let enable_import_button = enable_import_button.clone();

@@ -1,23 +1,31 @@
 mod web_worker;
 
+use std::rc::Rc;
+
 use dioxus::prelude::*;
 use dioxus_sdk::utils::channel::UseChannel;
 use drillx::Solution;
 use lazy_static::lazy_static;
-use ore_relayer_api::{consts::ESCROW, state::Escrow};
+use ore_api::{
+    consts::{BUS_COUNT, EPOCH_DURATION},
+    state::Proof,
+};
+use rand::Rng;
 use serde_wasm_bindgen::to_value;
-use solana_client_wasm::solana_sdk::{pubkey::Pubkey, signature::Signature};
+use solana_client_wasm::solana_sdk::{
+    compute_budget::ComputeBudgetInstruction, pubkey::Pubkey, signature::Signature, signer::Signer,
+};
 use solana_sdk::blake3::Hash as Blake3Hash;
 use web_sys::{window, Worker};
-use web_time::Duration;
 pub use web_worker::*;
 
 use crate::{
-    gateway::GatewayResult,
+    gateway::{signer, Gateway, GatewayResult, CU_LIMIT_MINE},
     hooks::{
-        use_gateway, MinerStatus, MinerStatusMessage, MinerToolbarState, PowerLevel, PriorityFee,
+        MinerStatus, MinerStatusMessage, MinerToolbarState, PowerLevel, PriorityFee,
         ReadMinerToolbarState, UpdateMinerToolbarState,
     },
+    utils,
 };
 
 // Number of physical cores on machine
@@ -87,12 +95,13 @@ impl Miner {
         &self,
         messages: &Vec<WebWorkerResponse>,
         toolbar_state: &mut Signal<MinerToolbarState>,
-        escrow: &mut Signal<Escrow>,
+        _proof: &mut Resource<GatewayResult<Proof>>,
+        gateway: Rc<Gateway>,
+        pubkey: Pubkey,
     ) {
         log::info!("Batch: {:?}", messages);
 
         // Get best solution
-        let gateway = use_gateway();
         let mut challenge = [0; 32];
         let mut offset = 0;
         let mut best_difficulty = 0;
@@ -122,33 +131,27 @@ impl Miner {
         let priority_fee = self.priority_fee.read().0;
 
         // Submit solution
-        let authority = escrow.read().authority;
-        let escrow_pubkey =
-            Pubkey::find_program_address(&[ESCROW, authority.as_ref()], &ore_relayer_api::id()).0;
-        match submit_solution(authority, best_solution, priority_fee).await {
+        match submit_solution(&gateway, best_solution, priority_fee).await {
             // Start mining again
             Ok(_sig) => {
+                // log::info!("Success: {}", sig); // MI
+                // proof.restart();
                 if let MinerStatus::Active = toolbar_state.status() {
-                    async_std::task::sleep(Duration::from_millis(1000)).await;
-                    if let Ok(new_escrow) = gateway.get_escrow(authority).await {
-                        escrow.set(new_escrow);
-                        if let Ok(proof) = gateway.get_proof(escrow_pubkey).await {
-                            if let Ok(clock) = gateway.get_clock().await {
-                                toolbar_state.set_status_message(MinerStatusMessage::Searching);
-                                let cutoff_time = proof
-                                    .last_hash_at
-                                    .saturating_add(60)
-                                    .saturating_sub(clock.unix_timestamp)
-                                    .max(0)
-                                    as u64;
-                                self.start_mining(proof.challenge.into(), 0, cutoff_time)
-                                    .await;
-                            } else {
-                                log::error!("Failed to get clock");
-                            }
+                    if let Ok(proof) = gateway.get_proof(pubkey).await {
+                        if let Ok(clock) = gateway.get_clock().await {
+                            toolbar_state.set_status_message(MinerStatusMessage::Searching);
+                            let cutoff_time = proof
+                                .last_hash_at
+                                .saturating_add(60)
+                                .saturating_sub(clock.unix_timestamp)
+                                .max(0) as u64;
+                            self.start_mining(proof.challenge.into(), 0, cutoff_time)
+                                .await;
                         } else {
-                            log::error!("Failed to get proof");
+                            log::error!("Failed to get clock");
                         }
+                    } else {
+                        log::error!("Failed to get proof");
                     }
                 }
             }
@@ -163,10 +166,50 @@ impl Miner {
 }
 
 pub async fn submit_solution(
-    pubkey: Pubkey,
+    gateway: &Rc<Gateway>,
     solution: Solution,
     priority_fee: u64,
 ) -> GatewayResult<Signature> {
-    let gateway = use_gateway();
-    gateway.send_via_relayer(pubkey, solution).await
+    let signer = signer();
+    // Build ixs
+    let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_MINE);
+    let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
+    let auth_ix = ore_api::instruction::auth(utils::proof_pubkey(signer.pubkey())); // MI
+    let mut ixs = vec![cu_limit_ix, cu_price_ix, auth_ix];
+
+    // Reset if needed
+    if needs_reset(gateway).await {
+        ixs.push(ore_api::instruction::reset(signer.pubkey()));
+    }
+
+    // Build mine tx
+    let bus_id = pick_bus();
+    let ix = ore_api::instruction::mine(
+        signer.pubkey(),
+        signer.pubkey(),
+        ore_api::consts::BUS_ADDRESSES[bus_id],
+        solution,
+    );
+    ixs.push(ix);
+
+    // Send and configm
+    gateway.send_and_confirm(&ixs, false, false).await
+}
+
+async fn needs_reset(gateway: &Rc<Gateway>) -> bool {
+    if let Ok(clock) = gateway.get_clock().await {
+        if let Ok(config) = gateway.get_config().await {
+            return config
+                .last_reset_at
+                .saturating_add(EPOCH_DURATION)
+                .saturating_sub(5) // Buffer
+                .le(&clock.unix_timestamp);
+        }
+    }
+    false
+}
+
+fn pick_bus() -> usize {
+    let mut rng = rand::thread_rng();
+    rng.gen_range(0..BUS_COUNT)
 }

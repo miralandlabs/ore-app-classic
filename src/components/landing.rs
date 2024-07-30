@@ -8,10 +8,11 @@ use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 use web_time::{Duration, Instant};
 
 use crate::{
-    components::{
-        DiscordIcon, Footer, FuzzlandIcon, GithubIcon, OreIcon, OreLogoIcon, OttersecIcon, XIcon,
+    components::{DiscordIcon, Footer, GithubIcon, OreIcon, OreLogoIcon, XIcon},
+    hooks::{
+        use_is_onboarded, use_ore_supply, use_screen_size, use_treasury_ore_balance, ScreenSize,
+        UiTokenAmountBalance,
     },
-    hooks::{use_is_onboarded, use_ore_supply, use_screen_size, ScreenSize, UiTokenAmountBalance},
     miner::WEB_WORKERS,
     route::Route,
     utils::asset_path,
@@ -70,8 +71,8 @@ pub fn Landing() -> Element {
             class: "absolute top-0 flex flex-col w-full h-full overflow-y-scroll z-50 snap-y snap-mandatory",
             Hero {
                 text_color,
-                title: "It's time to mine.",
-                subtitle: &"ORE is a cross-border digital currency everyone can mine."
+                title: "The classic way to mine ORE",
+                subtitle: &"No relayer, No escrow. Not your keypair, Not your ore."
             }
             Block {
                 title: &"Proof of work.",
@@ -264,7 +265,8 @@ fn Block(
                     match section {
                         Section::A => rsx! { SectionA { text_color } },
                         Section::B => rsx! { SectionB { text_color } },
-                        Section::C => rsx! { SectionC { text_color } },
+                        // Section::C => rsx! { SectionC { text_color } },
+                        Section::C => rsx! {},
                         Section::D => rsx! { SectionD { text_color } },
                     }
                 }
@@ -382,7 +384,7 @@ fn SectionA(text_color: TextColor) -> Element {
                     class: "flex flex-row gap-2",
                     p {
                         class: "text-2xl md:text-3xl lg:text-4xl font-bold font-mono",
-                        "{sample_hash.cloned().to_string()[1..17]}"
+                        {sample_hash.cloned().to_string()[1..17].to_owned()} // MI
                     }
                 }
             }
@@ -393,17 +395,32 @@ fn SectionA(text_color: TextColor) -> Element {
 #[component]
 fn SectionB(text_color: TextColor) -> Element {
     let supply = use_ore_supply();
-    let circulating_supply = supply
+    let current_supply = supply
         .cloned()
         .and_then(|s| s.ok())
         .map(|s| amount_to_ui_amount(s.balance(), s.decimals))
         .unwrap_or_else(|| 0f64) as u64;
+
+    let balance = use_treasury_ore_balance();
+    let treasury_balance = balance
+        .cloned()
+        .and_then(|b| b.ok())
+        .map(|b| amount_to_ui_amount(b.balance(), b.decimals))
+        .unwrap_or_else(|| 0f64) as u64;
+
+    let circulating_supply = current_supply - treasury_balance;
+
     rsx! {
         div {
             class: "flex flex-col gap-8 md:gap-12 my-auto",
             OreValue {
-                title: "Current supply (devnet)".to_string(),
+                title: "Circulating supply(excl. staking)".to_string(),
                 amount: circulating_supply,
+                text_color
+            }
+            OreValue {
+                title: "Current supply(incl. staking)".to_string(),
+                amount: current_supply,
                 text_color
             }
             OreValue {
@@ -442,41 +459,41 @@ fn OreValue(title: String, amount: u64, text_color: TextColor) -> Element {
     }
 }
 
-#[component]
-fn SectionC(text_color: TextColor) -> Element {
-    let text_color = match text_color {
-        TextColor::Black => "text-black",
-        TextColor::White => "text-white",
-    };
-    rsx! {
-        div {
-            class: "flex flex-col gap-2 my-auto",
-            p {
-                class: "opacity-80 font-medium {text_color}",
-                "Audited by"
-            }
-            div {
-                class: "flex flex-row gap-8 md:gap-12",
-                Link {
-                    to: "https://osec.io/",
-                    new_tab: true,
-                    class: "flex p-2 md:p-4 transition-colors rounded-full transition-colors {text_color} hover:bg-gray-100 hover:bg-opacity-20 active:bg-opacity-30",
-                    OttersecIcon {
-                        class: "w-10 h-10 md:w-12 md:h-12 m-auto"
-                    }
-                }
-                Link {
-                    to: "https://fuzz.land/",
-                    new_tab: true,
-                    class: "flex p-2 md:p-4 transition-colors rounded-full transition-colors {text_color} hover:bg-gray-100 hover:bg-opacity-20 active:bg-opacity-30",
-                    FuzzlandIcon {
-                        class: "w-10 h-10 md:w-12 md:h-12 m-auto"
-                    }
-                }
-            }
-        }
-    }
-}
+// #[component]
+// fn SectionC(text_color: TextColor) -> Element {
+//     let text_color = match text_color {
+//         TextColor::Black => "text-black",
+//         TextColor::White => "text-white",
+//     };
+//     rsx! {
+//         div {
+//             class: "flex flex-col gap-2 my-auto",
+//             p {
+//                 class: "opacity-80 font-medium {text_color}",
+//                 "Audited by"
+//             }
+//             div {
+//                 class: "flex flex-row gap-8 md:gap-12",
+//                 Link {
+//                     to: "https://osec.io/",
+//                     class: "flex p-2 md:p-4 transition-colors rounded-full transition-colors {text_color}",
+//                     new_tab: true,
+//                     OttersecIcon {
+//                         class: "w-10 h-10 md:w-12 md:h-12 m-auto"
+//                     }
+//                 }
+//                 Link {
+//                     to: "https://fuzz.land/",
+//                     class: "flex p-2 md:p-4 transition-colors rounded-full transition-colors {text_color}",
+//                     new_tab: true,
+//                     FuzzlandIcon {
+//                         class: "w-10 h-10 md:w-12 md:h-12 m-auto"
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct JupPriceApiResponse {

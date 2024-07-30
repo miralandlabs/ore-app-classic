@@ -18,3 +18,19 @@ pub fn use_ore_supply() -> Resource<GatewayResult<UiTokenAmount>> {
         }
     })
 }
+
+// MI
+// use treasury ore token account address directly
+pub fn use_treasury_ore_balance() -> Resource<GatewayResult<UiTokenAmount>> {
+    let gateway = use_gateway();
+    use_resource(move || {
+        let gateway = gateway.clone();
+        async move {
+            gateway
+                .rpc
+                .get_token_account_balance(&ore_api::consts::TREASURY_TOKENS_ADDRESS)
+                .await
+                .map_err(GatewayError::from)
+        }
+    })
+}

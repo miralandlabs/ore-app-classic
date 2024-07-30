@@ -67,13 +67,13 @@ pub fn use_explorer_account_url(address: String) -> String {
     }
 }
 
-pub fn use_explorer_transaction_url(signature: String) -> String {
-    let explorer = use_explorer();
-    let e = *explorer.read();
-    match e {
-        Explorer::Solana => format!("https://explorer.solana.com/tx/{}", signature),
-        Explorer::SolanaFm => format!("https://solana.fm/tx/{}", signature),
-        Explorer::Solscan => format!("https://solscan.io/tx/{}", signature),
-        Explorer::Xray => format!("https://xray.helius.xyz/tx/{}", signature),
-    }
-}
+// pub fn use_explorer_transaction_url(signature: String) -> String {
+//     let explorer = use_explorer();
+//     let e = *explorer.read();
+//     match e {
+//         Explorer::Solana => format!("https://explorer.solana.com/tx/{}", signature),
+//         Explorer::SolanaFm => format!("https://solana.fm/tx/{}", signature),
+//         Explorer::Solscan => format!("https://solscan.io/tx/{}", signature),
+//         Explorer::Xray => format!("https://xray.helius.xyz/tx/{}", signature),
+//     }
+// }

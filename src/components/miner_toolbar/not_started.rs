@@ -1,8 +1,8 @@
 use dioxus::prelude::*;
 
 use crate::{
-    components::{PlayIcon, StakeBalance, Tutorial},
-    hooks::{use_miner_toolbar_state, ReadMinerToolbarState, UpdateMinerToolbarState},
+    components::PlayIcon,
+    hooks::{use_miner_toolbar_state, UpdateMinerToolbarState},
 };
 
 pub fn MinerToolbarNotStarted() -> Element {

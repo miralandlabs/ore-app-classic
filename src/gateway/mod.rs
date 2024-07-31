@@ -27,7 +27,6 @@ use solana_client_wasm::{
     WasmClient,
 };
 use solana_extra_wasm::{
-    account_decoder::parse_token::UiTokenAccount,
     program::{
         spl_associated_token_account::{
             get_associated_token_address, instruction::create_associated_token_account,
@@ -47,7 +46,7 @@ pub const RPC_URL: &str = "https://rpc.ironforge.network/mainnet?apiKey=01J3ZM0E
 pub const CU_LIMIT_CLAIM: u32 = 12_000;
 pub const CU_LIMIT_STAKE: u32 = 12_000; // MI added
 pub const CU_LIMIT_MINE: u32 = 500_000;
-// pub const CU_LIMIT_UPGRADE: u32 = 20_000;
+pub const CU_LIMIT_UPGRADE: u32 = 600_000; // MI
 
 const RPC_RETRIES: usize = 0;
 const GATEWAY_RETRIES: usize = 4;
@@ -115,15 +114,15 @@ impl Gateway {
     //     Ok(*Treasury::try_from_bytes(&data).expect("Failed to parse treasury account"))
     // }
 
-    pub async fn _get_token_account(
-        &self,
-        pubkey: &Pubkey,
-    ) -> GatewayResult<Option<UiTokenAccount>> {
-        self.rpc
-            .get_token_account(pubkey)
-            .await
-            .map_err(GatewayError::from)
-    }
+    // pub async fn get_token_account(
+    //     &self,
+    //     pubkey: &Pubkey,
+    // ) -> GatewayResult<Option<UiTokenAccount>> {
+    //     self.rpc
+    //         .get_token_account(pubkey)
+    //         .await
+    //         .map_err(GatewayError::from)
+    // }
 
     pub async fn send_and_confirm(
         &self,
@@ -340,6 +339,45 @@ impl Gateway {
             .await
     }
 
+    // MI
+    pub async fn upgrade_ore(&self, amount: u64, priority_fee: u64) -> GatewayResult<Signature> {
+        let signer = signer();
+
+        // Build initial ixs
+        let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_UPGRADE);
+        let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
+
+        let mut ixs = vec![cu_limit_ix, cu_price_ix];
+    
+        // Create target(v2) token account if necessary
+        if self.get_token_account_ore_from_pubkey(signer.pubkey())
+            .await
+            .is_err()
+        {
+            ixs.push(create_associated_token_account(
+                &signer.pubkey(),
+                &signer.pubkey(),
+                &ore_api::consts::MINT_ADDRESS,
+                &spl_token::id(),
+            ));
+        }
+
+        // Append upgrade ix
+        let v1_token_account_address = ore_token_account_address_v1(signer.pubkey());
+        let v2_token_account_address = ore_token_account_address(signer.pubkey());
+        ixs.push(ore_api::instruction::upgrade(
+            signer.pubkey(),
+            v2_token_account_address,
+            v1_token_account_address,
+            amount,
+        ));
+
+        // self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], false, false)
+        //     .await
+
+         self.send_and_confirm(&ixs, false, false).await
+    }
+
     pub async fn transfer_ore(
         &self,
         amount: u64,
@@ -450,6 +488,37 @@ impl Gateway {
     //         Err(e) => Err(e.into()),
     //     }
     // }
+
+
+    // // asserts that the token account is already initialized
+    // pub async fn get_token_account_ore_from_pubkey_v1(
+    //     &self,
+    //     pubkey: Pubkey,
+    // ) -> GatewayResult<Pubkey> {
+    //     let token_account_address = ore_token_account_address_v1(pubkey);
+    //     self.assert_token_account_ore_exists(token_account_address)
+    //         .await
+    // }
+
+    // asserts that the token account is already initialized
+    pub async fn get_token_account_ore_from_pubkey(&self, pubkey: Pubkey) -> GatewayResult<Pubkey> {
+        let token_account_address = ore_token_account_address(pubkey);
+        self.assert_token_account_ore_exists(token_account_address)
+            .await
+    }
+
+    // asserts that the token account is already initialized
+    async fn assert_token_account_ore_exists(&self, ata: Pubkey) -> GatewayResult<Pubkey> {
+        self.rpc
+            .get_token_account(&ata)
+            .await
+            .map_err(GatewayError::from)
+            .and_then(|maybe_some_token_account| {
+                // assert that ok(none) was not returned
+                maybe_some_token_account.ok_or(GatewayError::FailedAta)
+            })
+            .map(|_| ata)
+    }
 }
 
 pub fn signer() -> Keypair {

@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use ore_api::consts::TOKEN_DECIMALS;
 use solana_client_wasm::solana_sdk::pubkey::Pubkey;
 use solana_extra_wasm::account_decoder::parse_token::UiTokenAmount;
 
@@ -34,7 +35,7 @@ pub fn use_ore_balance() -> Resource<GatewayResult<UiTokenAmount>> {
                         GatewayError::AccountNotFound => {
                             GatewayResult::Ok(UiTokenAmount {
                                 ui_amount: Some(0f64),
-                                decimals: ore_api::consts::TOKEN_DECIMALS,
+                                decimals: TOKEN_DECIMALS,
                                 amount: "0.00".to_string(),
                                 ui_amount_string: "0.00".to_string(),
                             })

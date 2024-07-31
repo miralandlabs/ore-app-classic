@@ -17,7 +17,7 @@ pub fn Navbar() -> Element {
             class: "relative min-h-screen flex flex-col text-black dark:bg-black dark:text-white {dark}",
             Banner {
                 style: BannerStyle::Info,
-                link_to: "https://github.com/miralandlabs/ore-app-classical",
+                link_to: "https://github.com/miralandlabs/ore-app-classic",
                 "This fork does NOT require a relayer or escrow. It's classic, with the key pair stored in your browser's local cache. Source code click here →"
             }
             div {

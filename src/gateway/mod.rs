@@ -47,6 +47,7 @@ pub const RPC_URL: &str = "https://rpc.ironforge.network/mainnet?apiKey=01J3ZM0E
 pub const CU_LIMIT_CLAIM: u32 = 12_000;
 pub const CU_LIMIT_STAKE: u32 = 12_000; // MI added
 pub const CU_LIMIT_MINE: u32 = 500_000;
+// pub const CU_LIMIT_UPGRADE: u32 = 20_000;
 
 const RPC_RETRIES: usize = 0;
 const GATEWAY_RETRIES: usize = 4;
@@ -77,6 +78,15 @@ impl Gateway {
         bincode::deserialize::<Clock>(&data).or(Err(GatewayError::FailedDeserialization))
     }
 
+    pub async fn get_config(&self) -> GatewayResult<Config> {
+        let data = self
+            .rpc
+            .get_account_data(&CONFIG_ADDRESS)
+            .await
+            .map_err(GatewayError::from)?;
+        Ok(*Config::try_from_bytes(&data).expect("Failed to parse config account"))
+    }
+
     pub async fn get_proof(&self, authority: Pubkey) -> GatewayResult<Proof> {
         let data = self
             .rpc
@@ -104,15 +114,6 @@ impl Gateway {
     //         .map_err(GatewayError::from)?;
     //     Ok(*Treasury::try_from_bytes(&data).expect("Failed to parse treasury account"))
     // }
-
-    pub async fn get_config(&self) -> GatewayResult<Config> {
-        let data = self
-            .rpc
-            .get_account_data(&CONFIG_ADDRESS)
-            .await
-            .map_err(GatewayError::from)?;
-        Ok(*Config::try_from_bytes(&data).expect("Failed to parse config account"))
-    }
 
     pub async fn _get_token_account(
         &self,
@@ -464,4 +465,9 @@ pub fn signer() -> Keypair {
 #[cached]
 pub fn ore_token_account_address(pubkey: Pubkey) -> Pubkey {
     get_associated_token_address(&pubkey, &ore_api::consts::MINT_ADDRESS)
+}
+
+#[cached]
+pub fn ore_token_account_address_v1(pubkey: Pubkey) -> Pubkey {
+    get_associated_token_address(&pubkey, &ore_api::consts::MINT_V1_ADDRESS)
 }

@@ -134,7 +134,7 @@ impl Miner {
         match submit_solution(&gateway, best_solution, priority_fee).await {
             // Start mining again
             Ok(_sig) => {
-                // log::info!("Success: {}", sig); // MI
+                // log::info!("Sig: {}", sig); // MI
                 proof.restart();
                 if let MinerStatus::Active = toolbar_state.status() {
                     if let Ok(proof) = gateway.get_proof(pubkey).await {
@@ -144,7 +144,8 @@ impl Miner {
                                 .last_hash_at
                                 .saturating_add(60)
                                 .saturating_sub(clock.unix_timestamp)
-                                .max(0) as u64;
+                                .max(0)
+                                as u64;
                             self.start_mining(proof.challenge.into(), 0, cutoff_time)
                                 .await;
                         } else {

@@ -14,7 +14,7 @@ pub fn MinerToolbarError() -> Element {
                 class: "flex-shrink flex-auto truncate my-auto",
                 p {
                     class: "font-mono text-sm truncate flex-shrink flex-auto opacity-80 my-auto ml-2",
-                    "RPC rate limited."
+                    "RPC service failed."
                 }
             }
             div {

@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 
 use crate::{
-    components::{Appearance, OreIcon},
+    components::{Appearance, OreIcon, QrCodeIcon},
     hooks::{use_appearance, use_ore_balance, use_ore_v1_balance, use_proof},
     route::Route,
 };
@@ -37,7 +37,7 @@ pub fn Balance() -> Element {
                         }
                         div {
                             class: "flex flex-row gap-4",
-                            // QrButton {}
+                            QrButton {}
                             SendButton {}
                         }
                     }
@@ -163,23 +163,23 @@ pub fn SendButton(to: Option<String>) -> Element {
     }
 }
 
-// #[component]
-// pub fn QrButton(to: Option<String>) -> Element {
-//     let appearance = use_appearance();
-//     let button_color = match *appearance.read() {
-//         Appearance::Light => "text-gray-300 hover:text-black ",
-//         Appearance::Dark => "text-gray-300 hover:text-white ",
-//     };
-//     rsx! {
-//         Link {
-//             to: Route::Pay {},
-//             class: "flex h-12 w-12 my-auto rounded-full justify-center text-2xl font-bold transition-all {button_color} hover-100 active-200",
-//             QrCodeIcon {
-//                 class: "w-6 h-6 my-auto",
-//             }
-//         }
-//     }
-// }
+#[component]
+pub fn QrButton(to: Option<String>) -> Element {
+    let appearance = use_appearance();
+    let button_color = match *appearance.read() {
+        Appearance::Light => "text-gray-300 hover:text-black ",
+        Appearance::Dark => "text-gray-300 hover:text-white ",
+    };
+    rsx! {
+        Link {
+            to: Route::Pay {},
+            class: "flex h-12 w-12 my-auto rounded-full justify-center text-2xl font-bold transition-all {button_color} hover-100 active-200",
+            QrCodeIcon {
+                class: "w-6 h-6 my-auto",
+            }
+        }
+    }
+}
 
 pub fn ClaimButton() -> Element {
     let appearance = use_appearance();

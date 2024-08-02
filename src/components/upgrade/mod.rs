@@ -37,8 +37,8 @@ pub fn Upgrade() -> Element {
         UpgradeStep::Confirm => {
             rsx! {
                 UpgradeConfirm {
-                    upgrade_step,
                     amount: parsed_amount,
+                    upgrade_step,
                 }
             }
         }

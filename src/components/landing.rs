@@ -71,7 +71,7 @@ pub fn Landing() -> Element {
             class: "absolute top-0 flex flex-col w-full h-full overflow-y-scroll z-50 snap-y snap-mandatory",
             Hero {
                 text_color,
-                title: "Classic, Efficient ORE Mining",
+                title: "Classic, efficient ORE mining",
                 subtitle: &"No relayer, No escrow. Not your keypair, Not your ore."
             }
             Block {
@@ -84,7 +84,7 @@ pub fn Landing() -> Element {
             Block {
                 title: &"Fixed supply.",
                 title2: &"Stable future.",
-                detail: &"ORE has a total maximum supply of 21 million tokens. With a steady issuance rate of one token per minute, all ORE in existence will be mined by the year 2064.",
+                detail: &"ORE has a total max supply of 21 million tokens. With a steady issuance rate of one token per minute, all ORE in existence will be mined by the year 2064.",
                 section: Section::B,
                 text_color
             }

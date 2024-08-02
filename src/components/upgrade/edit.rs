@@ -50,17 +50,17 @@ pub fn UpgradeEdit(
                     }
                 }
                 div {
-                    class: "flex flex-col gap-3",
+                    class: "flex flex-col gap-2",
                     h2 {
                         "Upgrade"
                     }
                     p {
                         class: "text-lg",
-                        "Upgrade your ORE v1 tokens to ORE v2."
+                        "Upgrade your OREv1 tokens to ORE."
                     }
                     p {
                         class: "text-sm text-gray-300 dark:text-gray-700",
-                        "This will burn your ORE v1 tokens and mint an equal number of ORE tokens directly to your keypair."
+                        "This will burn your OREv1 tokens and mint an equal number of ORE tokens directly to your keypair."
                     }
                 }
             }
@@ -94,7 +94,7 @@ pub fn UpgradeEdit(
                     onclick: move |_| {
                         amount_input.set(max_amount_str.clone())
                     },
-                    "Max: {max_amount_str}"
+                    "Max"
                 }
             }
             div {

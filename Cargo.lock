@@ -1711,13 +1711,13 @@ checksum = "9ea835d29036a4087793836fa931b08837ad5e957da9e23886b29586fb9b6650"
 
 [[package]]
 name = "drillx"
-version = "2.0.0-beta.1"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3bc503e6662deb892b18b41e6d23d2604d7a7804c00d4b84e1d58ecf22daa61c"
+checksum = "0c5fd3a8f11a6420d6efb1952c8c2e788627cb2c9e834537dc4b6bd036461646"
 dependencies = [
- "blake3",
  "equix",
  "serde",
+ "sha3 0.10.8",
  "solana-program",
  "strum",
 ]
@@ -3747,9 +3747,9 @@ dependencies = [
 
 [[package]]
 name = "ore-api"
-version = "2.0.0-beta.6"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a7d34b51e81353debe7ddd4d626395db7fe7a21712f0653b21b4e7db4219014"
+checksum = "0697cf6480f6c81117db19ceeaa66206b76f1d5b0e2896767f6d797f50181475"
 dependencies = [
  "array-const-fn-init",
  "bytemuck",
@@ -3766,8 +3766,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "ore-app-classical"
-version = "0.9.1"
+name = "ore-app-classic"
+version = "0.9.2"
 dependencies = [
  "async-std",
  "base64 0.22.1",
@@ -3822,9 +3822,9 @@ dependencies = [
 
 [[package]]
 name = "ore-utils"
-version = "2.0.0-beta.6"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f249bd7be8d0fae4be1e250f2ed86104023db4c219a61baaf32007b065a41102"
+checksum = "90a09a7a1e296ce157c75cf41145edb3608b838f9503125897552f4fe49acf64"
 dependencies = [
  "bytemuck",
  "solana-program",

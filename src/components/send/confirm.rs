@@ -26,21 +26,21 @@ pub fn SendConfirm(
         div {
             class: "flex flex-col h-full grow gap-12",
             div {
-                class: "flex flex-col gap-3",
+                class: "flex flex-col gap-2",
                 BackButton {
                     onclick: move |_| {
                         send_step.borrow_mut().set(SendStep::Edit);
                     }
                 }
                 h2 {
-                    "Confirm transfer"
+                    "Confirm"
                 }
                 p {
                     class: "text-lg",
                     "Please review your transfer information for correctness."
                 }
                 p {
-                    class: "text-sm text-gray-300 dark:text-gray-700",
+                    class: "text-sm text-gray-300",
                     "Once confirmed, this transaction cannot be undone."
                 }
             }

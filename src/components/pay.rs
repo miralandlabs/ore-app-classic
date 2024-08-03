@@ -42,7 +42,7 @@ pub fn Pay() -> Element {
                     }
                     p {
                         class: "text-lg",
-                        "Scan the code to pay the public address of your keypair."
+                        "Scan the code to pay the public address of your miner keypair."
                     }
                     p {
                         class: "text-sm text-gray-300",

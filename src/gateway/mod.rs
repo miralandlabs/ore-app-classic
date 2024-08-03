@@ -293,7 +293,7 @@ impl Gateway {
             // Retry
             async_std::task::sleep(Duration::from_millis(2000)).await;
             attempts += 1;
-            if attempts > GATEWAY_RETRIES {
+            if attempts >= GATEWAY_RETRIES {
                 return Err(GatewayError::TransactionTimeout);
             }
         }

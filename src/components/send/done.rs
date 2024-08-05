@@ -25,7 +25,7 @@ pub fn SendDone() -> Element {
                 CheckCircleIcon { class: "h-12 w-12 mx-auto" }
             }
             div {
-                class: "flex flex-col gap-3 w-full",
+                class: "flex flex-col gap-3",
                 div {
                     class: "h-full"
                 }

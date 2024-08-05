@@ -157,7 +157,7 @@ fn SocialLinks(text_color: TextColor) -> Element {
         div {
             class: "flex flex-row sm:text-sm md:text-base lg:text-lg my-auto gap-4 md:gap-8",
             Link {
-                to: "https://discord.gg/ore-supply",
+                to: "https://discord.com/invite/ore-supply",
                 class: "flex h-10 w-10 transition-colors rounded-full transition-colors {button_color} hover:bg-gray-100 hover:bg-opacity-20 active:bg-opacity-30",
                 new_tab: true,
                 DiscordIcon {
@@ -538,14 +538,16 @@ fn SectionD(text_color: TextColor) -> Element {
                     price: quotes.data["USDC"].price,
                     symbol: "$",
                     decimals: 2,
-                    link: "https://jup.ag/swap/USDC-ORE"
+                    // link: "https://jup.ag/swap/USDC-ORE"
+                    link: "https://jup.ag/swap/SOL-oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp"
                 }
                 Quote {
                     title: "ORE/BTC",
                     price: quotes.data["WBTC"].price,
                     symbol: "₿",
                     decimals: 8,
-                    link: "https://jup.ag/swap/WBTC-ORE"
+                    link: "https://jup.ag/swap/WBTC-oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp"
+                    // link: "https://jup.ag/swap/WBTC-ORE"
                 }
             }
         }

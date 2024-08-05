@@ -17,7 +17,7 @@ pub fn ClaimDone() -> Element {
                 }
                 p {
                     class: "text-sm text-gray-300",
-                    "You can now spend and transfer your Ore from the dashboard."
+                    "You can now spend and transfer your ORE from the dashboard."
                 }
             }
             div {

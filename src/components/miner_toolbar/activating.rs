@@ -11,8 +11,8 @@ use crate::{
     route::Route,
 };
 
-// MI, 100 => 0.01SOL
-pub const MIN_BALANCE: u64 = LAMPORTS_PER_SOL.saturating_div(100);
+// MI, 1000=> 0.001SOL
+pub const MIN_BALANCE: u64 = LAMPORTS_PER_SOL.saturating_div(1000);
 
 #[component]
 pub fn MinerToolbarActivating(miner: Signal<Miner>) -> Element {

@@ -1,6 +1,7 @@
 mod error;
 mod pubkey;
 
+use async_std::future::{timeout, Future};
 use cached::proc_macro::cached;
 pub use error::*;
 use gloo_storage::{LocalStorage, Storage};
@@ -69,6 +70,10 @@ impl Gateway {
     }
 
     pub async fn get_clock(&self) -> GatewayResult<Clock> {
+        retry(|| self.try_get_clock()).await
+    }
+
+    pub async fn try_get_clock(&self) -> GatewayResult<Clock> {
         let data = self
             .rpc
             .get_account_data(&sysvar::clock::ID)
@@ -78,6 +83,10 @@ impl Gateway {
     }
 
     pub async fn get_config(&self) -> GatewayResult<Config> {
+        retry(|| self.try_get_config()).await
+    }
+
+    pub async fn try_get_config(&self) -> GatewayResult<Config> {
         let data = self
             .rpc
             .get_account_data(&CONFIG_ADDRESS)
@@ -87,6 +96,10 @@ impl Gateway {
     }
 
     pub async fn get_proof(&self, authority: Pubkey) -> GatewayResult<Proof> {
+        retry(|| self.try_get_proof(authority)).await
+    }
+
+    pub async fn try_get_proof(&self, authority: Pubkey) -> GatewayResult<Proof> {
         let data = self
             .rpc
             .get_account_data(&proof_pubkey(authority))
@@ -529,6 +542,34 @@ pub fn signer() -> Keypair {
         x
     });
     Keypair::from_base58_string(&value)
+}
+
+pub async fn retry<F, Fut, T>(f: F) -> GatewayResult<T>
+where
+    F: Fn() -> Fut,
+    Fut: Future<Output = GatewayResult<T>>,
+{
+    const MAX_RETRIES: u32 = 8;
+    const INITIAL_BACKOFF: Duration = Duration::from_millis(200);
+    const TIMEOUT: Duration = Duration::from_secs(8);
+    let mut backoff = INITIAL_BACKOFF;
+    for attempt in 0..MAX_RETRIES {
+        match timeout(TIMEOUT, f()).await {
+            Ok(Ok(result)) => return Ok(result),
+            Ok(Err(_e)) if attempt < MAX_RETRIES - 1 => {
+                async_std::task::sleep(backoff).await;
+                backoff *= 2; // Exponential backoff
+            }
+            Ok(Err(e)) => return Err(e),
+            Err(_) if attempt < MAX_RETRIES - 1 => {
+                async_std::task::sleep(backoff).await;
+                backoff *= 2; // Exponential backoff
+            }
+            Err(_) => return Err(GatewayError::RetryFailed),
+        }
+    }
+
+    Err(GatewayError::RetryFailed)
 }
 
 #[cached]

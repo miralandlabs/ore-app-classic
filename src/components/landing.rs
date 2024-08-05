@@ -10,7 +10,7 @@ use web_time::{Duration, Instant};
 use crate::{
     components::{DiscordIcon, Footer, GithubIcon, OreIcon, OreLogoIcon, XIcon},
     hooks::{
-        use_ore_supply, use_screen_size, use_treasury_ore_balance, ScreenSize,
+        use_is_onboarded, use_ore_supply, use_screen_size, use_treasury_ore_balance, ScreenSize,
         UiTokenAmountBalance,
     },
     miner::WEB_WORKERS,
@@ -35,13 +35,13 @@ fn gen_asset_path(filename: &str, screen_size: Signal<ScreenSize>) -> String {
 pub fn Landing() -> Element {
     // let nav = navigator();
     let screen_size = use_screen_size();
-    // let is_onboarded = use_is_onboarded();
+    let is_onboarded = use_is_onboarded();
     let mut i = use_signal(|| 0usize);
     let bg_imgs = [
         (gen_asset_path("rock-1", screen_size), TextColor::White),
         (gen_asset_path("rock-2", screen_size), TextColor::White),
         (gen_asset_path("rock-3", screen_size), TextColor::White),
-        (gen_asset_path("rock-4", screen_size), TextColor::White),
+        // (gen_asset_path("rock-4", screen_size), TextColor::White),
     ];
     let len = bg_imgs.len();
     let text_color = bg_imgs[*i.read() % len].1;
@@ -54,10 +54,11 @@ pub fn Landing() -> Element {
         }
     });
 
-    // // If the user is already onboarded, redirect to home.
-    // if is_onboarded.read().0 {
-    //     nav.replace(Route::Home {});
-    // }
+    // If the user is already onboarded, redirect to home.
+    if is_onboarded.read().0 {
+        // MI: do nothing
+        // nav.replace(Route::Home {});
+    }
 
     rsx! {
         for (index, bg_img) in bg_imgs.iter().enumerate() {

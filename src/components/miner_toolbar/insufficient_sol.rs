@@ -8,6 +8,8 @@ use crate::{
     },
 };
 
+const TOP_UP_AMOUNT: f64 = 0.02; // In SOL (~$2)
+
 #[component]
 pub fn MinerToolbarTopUpOpen() -> Element {
     let mut sol_balance = use_sol_balance();
@@ -38,7 +40,7 @@ pub fn MinerToolbarTopUpOpen() -> Element {
 pub fn MinerToolbarInsufficientBalanceOpen() -> Element {
     let nav = use_navigator();
     let pubkey = use_pubkey();
-    let solana_pay_req = solana_pay_sol_request(pubkey, 0.05);
+    let solana_pay_req = solana_pay_sol_request(pubkey, TOP_UP_AMOUNT);
     let qrcode = qrcode_generator::to_svg_to_string(
         solana_pay_req,
         qrcode_generator::QrCodeEcc::Low,

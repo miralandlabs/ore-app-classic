@@ -14,7 +14,7 @@ pub fn Balance() -> Element {
             .map(|b| b.real_number_string_trimmed())
             .unwrap_or_else(|_| "0.00".to_owned());
 
-        rsx! {
+        return rsx! {
             div {
                 class: "flex flex-row w-full min-h-16 rounded justify-between",
                 div {
@@ -41,16 +41,16 @@ pub fn Balance() -> Element {
                             SendButton {}
                         }
                     }
-                    StakeBalance {}
                     OreV1Balance {}
+                    StakeBalance {}
                 }
             }
-        }
-    } else {
-        rsx! {
-            div {
-                class: "flex flex-row w-full min-h-24 grow loading rounded",
-            }
+        };
+    }
+
+    rsx! {
+        div {
+            class: "flex flex-row w-full min-h-24 grow loading rounded",
         }
     }
 }
@@ -58,8 +58,7 @@ pub fn Balance() -> Element {
 pub fn StakeBalance() -> Element {
     let mut proof = use_proof();
 
-    // MI
-    // TODO Poll stake balance every 3 seconds
+    // MI: Poll stake balance every 3 seconds
     use_future(move || async move {
         loop {
             async_std::task::sleep(std::time::Duration::from_secs(3)).await;

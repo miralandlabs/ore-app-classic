@@ -22,19 +22,19 @@ pub async fn get_recent_priority_fee_estimate(treasury: bool) -> u64 {
     });
 
     // MI: test
-    let rpc_url = "https://mainnet.helius-rpc.com/?api-key=c9de0b57-067d-4b66-963b-416667c07d10";
+    // let rpc_url = "https://mainnet.helius-rpc.com/?api-key=c9de0b57-067d-4b66-963b-416667c07d10";
 
     // MI: replace RPC_URL with rpc_url
-    log::info!("Start request sending...");
+    // log::info!("Start request sending...");
     if let Ok(res) = http_client
-        .post(rpc_url.to_string())
+        .post(RPC_URL.to_string())
         .json(&req)
         .send()
         .await
     {
-        log::info!("Got response from post.");
+        // log::info!("Got response from post.");
         if let Ok(res) = res.json::<Value>().await {
-            log::info!("Got result from response.");
+            // log::info!("Got result from response.");
             return res["result"]["priorityFeeEstimate"]
                 .as_f64()
                 .map(|fee| fee as u64)
@@ -42,7 +42,7 @@ pub async fn get_recent_priority_fee_estimate(treasury: bool) -> u64 {
         }
     }
     else {
-        log::info!("Failed send request."); // MI
+        // log::info!("Failed send request."); // MI
     }
 
     0

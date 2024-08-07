@@ -29,7 +29,12 @@ pub fn SendConfirm(
             Some(p)
         }
     });
-    priority_fee.set(PriorityFee(price.unwrap().unwrap_or(0)));
+    
+    if let Some(Some(price)) = *price.read() {
+        priority_fee.set(PriorityFee(price));
+    } else {
+        priority_fee.set(PriorityFee(0));
+    }
 
     rsx! {
         div {

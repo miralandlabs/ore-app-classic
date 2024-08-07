@@ -21,13 +21,13 @@ pub async fn get_recent_priority_fee_estimate(treasury: bool) -> u64 {
         }]
     });
 
-    // MI: test
-    // let rpc_url = "https://mainnet.helius-rpc.com/?api-key=c9de0b57-067d-4b66-963b-416667c07d10";
+    // MI: use helius strategy for fee estimation.
+    let rpc_url = "https://mainnet.helius-rpc.com/?api-key=c9de0b57-067d-4b66-963b-416667c07d10";
 
-    // MI: replace RPC_URL with rpc_url
+    // MI: replace vanilla RPC_URL with rpc_url
     // log::info!("Start request sending...");
     if let Ok(res) = http_client
-        .post(RPC_URL.to_string())
+        .post(rpc_url.to_string())
         .json(&req)
         .send()
         .await

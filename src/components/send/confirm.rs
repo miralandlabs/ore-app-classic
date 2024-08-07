@@ -23,18 +23,11 @@ pub fn SendConfirm(
     let mut priority_fee = use_priority_fee();
     let mut ore_balance = use_ore_balance();
     let gateway = use_gateway();
-    // let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
-    let price = use_resource(move || { async move {
-            let p = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
-            Some(p)
-        }
-    });
-    
-    if let Some(Some(price)) = *price.read() {
+
+    use_future(move || async move {
+        let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
         priority_fee.set(PriorityFee(price));
-    } else {
-        priority_fee.set(PriorityFee(0));
-    }
+    });
 
     rsx! {
         div {

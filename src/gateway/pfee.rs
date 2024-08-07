@@ -31,12 +31,17 @@ pub async fn get_recent_priority_fee_estimate(treasury: bool) -> u64 {
         .send()
         .await
     {
+        log::info!("Got response from post.");
         if let Ok(res) = res.json::<Value>().await {
+            log::info!("Got result from response.");
             return res["result"]["priorityFeeEstimate"]
                 .as_f64()
                 .map(|fee| fee as u64)
                 .unwrap_or(0);
         }
+    }
+    else {
+        log::info!("Failed send request."); // MI
     }
 
     0

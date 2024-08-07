@@ -19,19 +19,12 @@ pub fn ClaimConfirm(amount: u64, claim_step: Signal<ClaimStep>) -> Element {
     let mut proof = use_proof();
     let pubkey = use_pubkey();
     let gateway = use_gateway();
-    // let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
-    let price = use_resource(move || { async move {
-            let p = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
-            Some(p)
+
+    use_future(move || { async move {
+            let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
+            priority_fee.set(PriorityFee(price));
         }
     });
-        
-    if let Some(Some(price)) = *price.read() {
-        priority_fee.set(PriorityFee(price));
-    } else {
-        priority_fee.set(PriorityFee(0));
-    }
-
 
     rsx! {
         div {

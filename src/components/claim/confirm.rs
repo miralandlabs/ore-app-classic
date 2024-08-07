@@ -20,12 +20,14 @@ pub fn ClaimConfirm(amount: u64, claim_step: Signal<ClaimStep>) -> Element {
     let pubkey = use_pubkey();
     let gateway = use_gateway();
     // let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
-    let price = use_resource(move || { async move {
-            let p = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
-            Some(p)
-        }
-    });
-    priority_fee.set(PriorityFee(price.unwrap().unwrap_or(0)));
+    // let price = use_resource(move || { async move {
+    //         let p = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
+    //         Some(p)
+    //     }
+    // });
+    // priority_fee.set(PriorityFee(price.unwrap().unwrap_or(0)));
+
+    priority_fee.set(PriorityFee(100));
 
     rsx! {
         div {

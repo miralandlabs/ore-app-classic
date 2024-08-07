@@ -6,7 +6,8 @@ use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 
 use crate::{
     components::{BackButton, OreIcon, Spinner},
-    hooks::{use_gateway, use_ore_balance},
+    gateway,
+    hooks::{use_gateway, use_ore_balance, use_priority_fee, PriorityFee},
 };
 
 use super::SendStep;
@@ -19,8 +20,16 @@ pub fn SendConfirm(
     memo: String,
 ) -> Element {
     let mut is_busy = use_signal(|| false);
+    let mut priority_fee = use_priority_fee();
     let mut ore_balance = use_ore_balance();
     let gateway = use_gateway();
+    // let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
+    let price = use_resource(move || { async move {
+            let p = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
+            Some(p)
+        }
+    });
+    priority_fee.set(PriorityFee(price.unwrap().unwrap_or(0)));
 
     rsx! {
         div {
@@ -84,6 +93,42 @@ pub fn SendConfirm(
                 }
             }
             div {
+                class: "flex flex-row gap-8 justify-between mt-8",
+                div {
+                    class: "flex flex-col gap-1",
+                    p {
+                        class: "font-semibold",
+                        "Priority fee(with initial recommendation)"
+                    }
+                    p {
+                        class: "text-xs opacity-80 max-w-96",
+                        "Add a priority fee to increase your chances of landing a transaction only during blockchain congestion."
+                    }
+                }
+                div {
+                    class: "flex flex-row flex-shrink h-min gap-1 shrink mb-auto",
+                    input {
+                        disabled: *is_busy.read(),
+                        class: "bg-transparent text-right px-1 mb-auto font-semibold",
+                        dir: "rtl",
+                        step: 100_000,
+                        min: 0,
+                        max: 50_000_000,
+                        r#type: "number",
+                        value: "{priority_fee.read().0}",
+                        oninput: move |e| {
+                            if let Ok(v) = e.value().parse::<u64>() {
+                                priority_fee.set(PriorityFee(v));
+                            }
+                        }
+                    }
+                    p {
+                        class: "my-auto",
+                        "microlamports"
+                    }
+                }
+            }
+            div {
                 class: "flex flex-col mt-auto sm:flex-row gap-2",
                 button {
                     class: "w-full py-3 rounded font-semibold transition-colors text-white bg-green-500 hover:bg-green-600 active:enabled:bg-green-700",
@@ -93,7 +138,7 @@ pub fn SendConfirm(
                         let memo = memo.clone();
                         is_busy.set(true);
                         spawn(async move {
-                            match gateway.transfer_ore(amount, recipient, memo).await {
+                            match gateway.transfer_ore(amount, recipient, memo, priority_fee.read().0).await {
                                 Ok(sig) => {
                                     log::info!("Transfer: {:?}", sig);
                                     ore_balance.restart();

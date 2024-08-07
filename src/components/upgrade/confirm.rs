@@ -5,6 +5,7 @@ use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 
 use crate::{
     components::{BackButton, OreIcon, Spinner},
+    gateway,
     hooks::{use_gateway, use_ore_balance, use_priority_fee, use_proof, PriorityFee},
 };
 
@@ -17,6 +18,13 @@ pub fn UpgradeConfirm(amount: u64, upgrade_step: Signal<UpgradeStep>) -> Element
     let mut balance = use_ore_balance();
     let mut proof = use_proof();
     let gateway = use_gateway();
+    // let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
+    let price = use_resource(move || { async move {
+            let p = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
+            Some(p)
+        }
+    });
+    priority_fee.set(PriorityFee(price.unwrap().unwrap_or(0)));
 
     rsx! {
         div {
@@ -79,7 +87,7 @@ pub fn UpgradeConfirm(amount: u64, upgrade_step: Signal<UpgradeStep>) -> Element
                         class: "flex flex-col gap-1",
                         p {
                             class: "font-semibold",
-                            "Priority fee"
+                            "Priority fee(with initial recommendation)"
                         }
                         p {
                             class: "text-xs opacity-80 max-w-96",

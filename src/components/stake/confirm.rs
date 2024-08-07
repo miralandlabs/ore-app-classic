@@ -5,6 +5,7 @@ use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 
 use crate::{
     components::{BackButton, OreIcon, Spinner},
+    gateway,
     hooks::{use_gateway, use_ore_balance, use_priority_fee, use_proof, PriorityFee},
 };
 
@@ -17,26 +18,33 @@ pub fn StakeConfirm(amount: u64, stake_step: Signal<StakeStep>) -> Element {
     let mut balance = use_ore_balance();
     let mut proof = use_proof();
     let gateway = use_gateway();
+    // let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
+    let price = use_resource(move || { async move {
+            let p = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
+            Some(p)
+        }
+    });
+    priority_fee.set(PriorityFee(price.unwrap().unwrap_or(0)));
 
     rsx! {
         div {
             class: "flex flex-col h-full grow justify-between",
             div {
-                class: "flex flex-col gap-3",
+                class: "flex flex-col gap-2",
                 BackButton {
                     onclick: move |_| {
                         stake_step.borrow_mut().set(StakeStep::Edit);
                     }
                 }
                 h2 {
-                    "Confirm stake"
+                    "Confirm"
                 }
                 p {
                     class: "text-lg",
                     "Please review your stake information for correctness."
                 }
                 p {
-                    class: "text-sm text-gray-300 dark:text-gray-700",
+                    class: "text-sm text-gray-300",
                     "Once confirmed, this transaction cannot be undone."
                 }
             }
@@ -61,7 +69,7 @@ pub fn StakeConfirm(amount: u64, stake_step: Signal<StakeStep>) -> Element {
                         class: "flex flex-col gap-1",
                         p {
                             class: "font-semibold",
-                            "Priority fee"
+                            "Priority fee(with initial recommendation)"
                         }
                         p {
                             class: "text-xs opacity-80 max-w-96",

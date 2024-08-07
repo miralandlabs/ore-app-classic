@@ -1,4 +1,5 @@
 mod error;
+mod pfee;
 mod pubkey;
 
 use async_std::future::{timeout, Future};
@@ -28,6 +29,7 @@ use solana_client_wasm::{
     WasmClient,
 };
 use solana_extra_wasm::{
+    account_decoder::parse_token::UiTokenAccount,
     program::{
         spl_associated_token_account::{
             get_associated_token_address, instruction::create_associated_token_account,
@@ -38,20 +40,24 @@ use solana_extra_wasm::{
 };
 use std::str::FromStr;
 use web_time::Duration;
+pub use pfee::*;
 pub use pubkey::*;
 
 pub const API_URL: &str = "https://ore-v2-api-lthm.onrender.com"; // MI: dummy
 // royal: ore-app-classic ironforge RPC Endpoint
 pub const RPC_URL: &str = "https://rpc.ironforge.network/mainnet?apiKey=01J3ZM0ECN63VB741S74YPCFWS";
 
+pub const CU_LIMIT_CREATE_ATA: u32 = 85_000; // MI added
 pub const CU_LIMIT_CLAIM: u32 = 12_000;
 pub const CU_LIMIT_STAKE: u32 = 12_000; // MI added
+pub const CU_LIMIT_TRANSFER: u32 = 30_000; // MI added, incl. memo
 pub const CU_LIMIT_MINE: u32 = 500_000;
-pub const CU_LIMIT_UPGRADE: u32 = 600_000; // MI
+pub const CU_LIMIT_UPGRADE: u32 = 30_000; // MI
 
 const RPC_RETRIES: usize = 0;
-const GATEWAY_RETRIES: usize = 4;
-const CONFIRM_RETRIES: usize = 8;
+const GATEWAY_RETRIES: usize = 64; // MI: vanilla 128
+const CONFIRM_RETRIES: usize = 10; // MI: vanilla 20
+const CONFIRM_DELAY: u64 = 1000;  // MI: vanilla 500
 const TIP_AMOUNT: u64 = 100_000;
 
 pub struct Gateway {
@@ -118,24 +124,22 @@ impl Gateway {
         Ok(*Bus::try_from_bytes(&data).expect("Failed to parse bus"))
     }
 
-    // pub async fn get_treasury(&self) -> GatewayResult<Treasury> {
-    //     let data = self
-    //         .rpc
-    //         .get_account_data(&TREASURY_ADDRESS)
-    //         .await
-    //         .map_err(GatewayError::from)?;
-    //     Ok(*Treasury::try_from_bytes(&data).expect("Failed to parse treasury account"))
-    // }
+    pub async fn get_token_account(
+        &self,
+        pubkey: &Pubkey,
+    ) -> GatewayResult<Option<UiTokenAccount>> {
+        retry(|| self.try_get_token_account(pubkey)).await
+    }
 
-    // pub async fn get_token_account(
-    //     &self,
-    //     pubkey: &Pubkey,
-    // ) -> GatewayResult<Option<UiTokenAccount>> {
-    //     self.rpc
-    //         .get_token_account(pubkey)
-    //         .await
-    //         .map_err(GatewayError::from)
-    // }
+    pub async fn try_get_token_account(
+        &self,
+        pubkey: &Pubkey,
+    ) -> GatewayResult<Option<UiTokenAccount>> {
+        self.rpc
+            .get_token_account(pubkey)
+            .await
+            .map_err(GatewayError::from)
+    }
 
     pub async fn send_and_confirm(
         &self,
@@ -258,7 +262,7 @@ impl Gateway {
                     // Confirm tx
                     for _ in 0..CONFIRM_RETRIES {
                         // Delay before confirming
-                        async_std::task::sleep(Duration::from_millis(2000)).await;
+                        async_std::task::sleep(Duration::from_millis(CONFIRM_DELAY)).await;
 
                         // Fetch transaction status
                         match self.rpc.get_signature_statuses(&[sig]).await {
@@ -304,7 +308,7 @@ impl Gateway {
             }
 
             // Retry
-            async_std::task::sleep(Duration::from_millis(2000)).await;
+            // async_std::task::sleep(Duration::from_millis(2000)).await;
             attempts += 1;
             if attempts >= GATEWAY_RETRIES {
                 return Err(GatewayError::TransactionTimeout);
@@ -332,10 +336,28 @@ impl Gateway {
     pub async fn claim_ore(&self, amount: u64, priority_fee: u64) -> GatewayResult<Signature> {
         let signer = signer();
         let beneficiary = ore_token_account_address(signer.pubkey());
+
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_CLAIM);
         let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
+        let mut ixs = vec![cu_limit_ix, cu_price_ix];
+
+        if let Ok(Some(_)) = self.get_token_account(&beneficiary).await {
+            // nothing
+        } else {
+            // Add create ata ix
+            ixs.remove(0);
+            ixs.insert(0, ComputeBudgetInstruction::set_compute_unit_limit(100_000));
+            ixs.push(create_associated_token_account(
+                &signer.pubkey(),
+                &signer.pubkey(),
+                &ore_api::consts::MINT_ADDRESS,
+                &spl_token::id(),
+            ));
+        }
         let ix = ore_api::instruction::claim(signer.pubkey(), beneficiary, amount);
-        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], false, false)
+        ixs.push(ix);
+        // self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], false, false)
+        self.send_and_confirm(&ixs, false, false)
             .await
     }
 
@@ -396,14 +418,19 @@ impl Gateway {
         amount: u64,
         to: Pubkey,
         memo: String,
+        priority_fee: u64
     ) -> GatewayResult<Signature> {
         // Create recipient token account, if necessary
-        self.create_token_account_ore(to).await?;
+        self.create_token_account_ore(to, priority_fee).await?;
 
         // Submit transfer ix
         let signer = signer();
         let from_token_account = ore_token_account_address(signer.pubkey());
         let to_token_account = ore_token_account_address(to);
+
+        let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_TRANSFER);
+        let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
+
         let memo_ix = spl_memo::build_memo(&memo.into_bytes(), &[&signer.pubkey()]);
         let transfer_ix = spl_token::instruction::transfer(
             &spl_token::ID,
@@ -414,11 +441,11 @@ impl Gateway {
             amount,
         )
         .unwrap();
-        self.send_and_confirm(&[memo_ix, transfer_ix], true, false)
+        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, memo_ix, transfer_ix], false, false)
             .await
     }
 
-    pub async fn create_token_account_ore(&self, owner: Pubkey) -> GatewayResult<Pubkey> {
+    pub async fn create_token_account_ore(&self, owner: Pubkey, priority_fee: u64) -> GatewayResult<Pubkey> {
         // Build instructions.
         let signer = signer();
 
@@ -446,6 +473,9 @@ impl Gateway {
             }
         }
 
+        // account not exist, create ata
+        let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_CREATE_ATA);
+        let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
         // Sign and send transaction.
         let ix = create_associated_token_account(
             &signer.pubkey(),
@@ -453,7 +483,7 @@ impl Gateway {
             &ore_api::consts::MINT_ADDRESS,
             &spl_token::id(),
         );
-        match self.send_and_confirm(&[ix], true, false).await {
+        match self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], false, false).await {
             Ok(_) => {}
             Err(_) => return Err(GatewayError::FailedAta),
         }

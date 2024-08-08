@@ -7,7 +7,7 @@ use crate::{
         BackButton, MinerToolbarTopUpOpen,
         OreIcon, Spinner, MIN_BALANCE,
     },
-    gateway,
+    // gateway,
     hooks::{
         use_gateway, use_miner_toolbar_state, use_power_level, use_priority_fee,
         use_proof, use_sol_balance, MinerStatus, MinerStatusMessage, PowerLevel, PriorityFee, ReadMinerToolbarState,
@@ -32,13 +32,13 @@ pub fn Mine() -> Element {
         }
     }
 
-    // MI
-    let mut priority_fee = use_priority_fee();
-    // let gateway = use_gateway();
-    use_future(move || async move {
-        let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
-        priority_fee.set(PriorityFee(price));
-    });
+    // // MI
+    // let mut priority_fee = use_priority_fee();
+    // // let gateway = use_gateway();
+    // use_future(move || async move {
+    //     let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
+    //     priority_fee.set(PriorityFee(price));
+    // });
 
     rsx! {
         div {
@@ -262,7 +262,7 @@ pub fn PriorityFeeConfig() -> Element {
                 class: "flex flex-col gap-1",
                 p {
                     class: "text-gray-300 font-medium text-sm my-auto",
-                    "Priority fee(with initial recommendation)"
+                    "Priority fee"
                 }
                 p {
                     class: "text-gray-300 text-xs opacity-80 max-w-96",

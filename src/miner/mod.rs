@@ -100,6 +100,11 @@ impl Miner {
         pubkey: Pubkey,
     ) {
         log::info!("Batch: {:?}", messages);
+        // Exit early if not active
+        match toolbar_state.status() {
+            MinerStatus::Active => {}
+            _ => return,
+        }
 
         // Get best solution
         let mut challenge = [0; 32];
@@ -179,7 +184,8 @@ pub async fn submit_solution(
     let mut ixs = vec![cu_limit_ix, cu_price_ix, auth_ix];
 
     // Reset if needed
-    if needs_reset(gateway).await {
+    // if needs_reset(gateway).await { // MI: vanilla
+    if needs_reset(gateway).await && rand::thread_rng().gen_range(0..100).eq(&0) {
         ixs.push(ore_api::instruction::reset(signer.pubkey()));
     }
 

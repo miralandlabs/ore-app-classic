@@ -8,7 +8,7 @@ use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 use web_time::{Duration, Instant};
 
 use crate::{
-    components::{DiscordIcon, Footer, GithubIcon, OreIcon, OreLogoIcon, XIcon},
+    components::{DexscreenIcon, DiscordIcon, Footer, GithubIcon, OreIcon, OreLogoIcon, XIcon},
     hooks::{
         use_is_onboarded, use_ore_supply, use_screen_size, use_treasury_ore_balance, ScreenSize,
         UiTokenAmountBalance,
@@ -92,7 +92,7 @@ pub fn Landing() -> Element {
             Block {
                 title: &"Borderless asset.",
                 title2: &"Permissionless cash.",
-                detail: &"ORE is internet-native money that moves at the speed of the light. It can be sent to anyone, anywhere in the world, in under a second, with negligable fees.",
+                detail: &"ORE is internet-native money that moves at the speed of the light. It can be sent to anyone, anywhere in the world, in under a second, with negligible fees.",
                 section: Section::D,
                 text_color
             }
@@ -157,6 +157,14 @@ fn SocialLinks(text_color: TextColor) -> Element {
     rsx! {
         div {
             class: "flex flex-row sm:text-sm md:text-base lg:text-lg my-auto gap-4 md:gap-8",
+            Link {
+                to: "https://dexscreener.com/solana/ggadtfbqdgjozz3fp7zrtofgwnrs4e6mczmmd5ni1mxj",
+                class: "flex h-10 w-10 transition-colors rounded-full transition-colors {button_color} hover:bg-gray-100 hover:bg-opacity-20 active:bg-opacity-30",
+                new_tab: true,
+                DexscreenIcon {
+                    class: "w-6 h-6 m-auto"
+                }
+            }
             Link {
                 to: "https://discord.com/invite/ore-supply",
                 class: "flex h-10 w-10 transition-colors rounded-full transition-colors {button_color} hover:bg-gray-100 hover:bg-opacity-20 active:bg-opacity-30",
@@ -309,7 +317,8 @@ fn BlockCta(section: Section, text_color: TextColor) -> Element {
         Section::D => rsx! {
             Link {
                 class: "{style} {cta_color}",
-                to: "https://jup.ag/swap/USDC-ORE",
+                // to: "https://jup.ag/swap/USDC-ORE",
+                to: "https://jup.ag/swap/SOL-oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp",
                 new_tab: true,
                 "Buy now →"
             }
@@ -524,7 +533,8 @@ fn SectionD(text_color: TextColor) -> Element {
     };
 
     let quotes = use_resource(move || async move {
-        match reqwest::get("https://price.jup.ag/v6/price?ids=USDC,WBTC&vsToken=ORE").await {
+        // match reqwest::get("https://price.jup.ag/v6/price?ids=USDC,WBTC&vsToken=ORE").await {
+        match reqwest::get("https://price.jup.ag/v6/price?ids=USDC,WBTC&vsToken=oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp").await {
             Ok(res) => res.json::<JupPriceApiResponse>().await.ok(),
             Err(_) => None,
         }
@@ -534,21 +544,25 @@ fn SectionD(text_color: TextColor) -> Element {
         div {
             class: "flex flex-row flex-wrap gap-8 md:gap-12 my-auto align-top transition-colors {text_color}",
             if let Some(Some(quotes)) = quotes.cloned() {
-                Quote {
-                    title: "ORE/USD",
-                    price: quotes.data["USDC"].price,
-                    symbol: "$",
-                    decimals: 2,
-                    // link: "https://jup.ag/swap/USDC-ORE"
-                    link: "https://jup.ag/swap/SOL-oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp"
+                if quotes.data.contains_key("USDC") {
+                    Quote {
+                        title: "ORE/USD",
+                        price: quotes.data["USDC"].price,
+                        symbol: "$",
+                        decimals: 2,
+                        // link: "https://jup.ag/swap/USDC-ORE"
+                        link: "https://jup.ag/swap/USDC-oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp"
+                    }
                 }
-                Quote {
-                    title: "ORE/BTC",
-                    price: quotes.data["WBTC"].price,
-                    symbol: "₿",
-                    decimals: 8,
-                    link: "https://jup.ag/swap/WBTC-oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp"
-                    // link: "https://jup.ag/swap/WBTC-ORE"
+                if quotes.data.contains_key("WBTC") {
+                    Quote {
+                        title: "ORE/BTC",
+                        price: quotes.data["WBTC"].price,
+                        symbol: "₿",
+                        decimals: 8,
+                        link: "https://jup.ag/swap/WBTC-oreoU2P8bN6jkk3jbaiVxYnG1dCXcYxwhwyK9jSybcp"
+                        // link: "https://jup.ag/swap/WBTC-ORE"
+                    }
                 }
             }
         }

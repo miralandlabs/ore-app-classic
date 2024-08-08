@@ -1,16 +1,15 @@
 use dioxus::prelude::*;
 // use ore_relayer_api::state::Escrow;
 use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
+use std::str::FromStr;
 
 use crate::{
     components::{
-        BackButton, MinerToolbarTopUpOpen,
-        OreIcon, Spinner, MIN_BALANCE,
+        BackButton, MinerToolbarTopUpOpen, OreIcon, PriorityFeeStrategy, Spinner, MIN_BALANCE
     },
     // gateway,
     hooks::{
-        use_gateway, use_miner_toolbar_state, use_power_level, use_priority_fee,
-        use_proof, use_sol_balance, MinerStatus, MinerStatusMessage, PowerLevel, PriorityFee, ReadMinerToolbarState,
+        use_gateway, use_miner_toolbar_state, use_power_level, use_priority_fee, use_priority_fee_strategy, use_proof, use_sol_balance, MinerStatus, MinerStatusMessage, PowerLevel, PriorityFee, ReadMinerToolbarState
     },
     miner::WEB_WORKERS,
 };
@@ -113,6 +112,7 @@ pub fn Mine() -> Element {
             StakeBalanceDisplay {}
             MultiplierDisplay {}
             PowerLevelConfig {}
+            PriorityFeeStrategyConfig {}
             PriorityFeeConfig {}
             // DownloadLink {}
 
@@ -252,8 +252,36 @@ pub fn PowerLevelConfig() -> Element {
     }
 }
 
+pub fn PriorityFeeStrategyConfig() -> Element {
+    let mut priority_fee_strategy = use_priority_fee_strategy();
+
+    let container_class = "flex flex-row gap-8 justify-between w-full sm:px-1";
+    let data_title_class = "font-medium text-sm opacity-50 my-auto";
+
+    rsx! {
+        div {
+            class: "{container_class}",
+            p {
+                class: "{data_title_class}",
+                "Priority Fee Strategy"
+            }
+            select {
+                class: "text-right bg-transparent dark:text-white hover:cursor-pointer py-1",
+                onchange: move |e| {
+                    if let Ok(s) = PriorityFeeStrategy::from_str(&e.value()) {
+                        priority_fee_strategy.set(s);
+                    }
+                },
+                option { initial_selected: priority_fee_strategy.read().eq(&PriorityFeeStrategy::Dynamic), value: "{PriorityFeeStrategy::Dynamic}", "{PriorityFeeStrategy::Dynamic}" }
+                option { initial_selected: priority_fee_strategy.read().eq(&PriorityFeeStrategy::Static), value: "{PriorityFeeStrategy::Static}", "{PriorityFeeStrategy::Static}" }
+            }
+        }
+    }
+}
+
 pub fn PriorityFeeConfig() -> Element {
     let mut priority_fee = use_priority_fee();
+    let priority_fee_strategy = use_priority_fee_strategy();
 
     rsx! {
         div {
@@ -272,6 +300,7 @@ pub fn PriorityFeeConfig() -> Element {
            div {
                 class: "flex flex-row flex-shrink h-min gap-1 shrink mb-auto",
                 input {
+                    disabled: priority_fee_strategy.read().eq(&PriorityFeeStrategy::Dynamic),
                     class: "bg-transparent dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
                     dir: "rtl",
                     step: 100_000,

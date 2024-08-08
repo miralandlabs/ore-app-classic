@@ -255,18 +255,16 @@ pub fn PowerLevelConfig() -> Element {
 pub fn PriorityFeeStrategyConfig() -> Element {
     let mut priority_fee_strategy = use_priority_fee_strategy();
 
-    let container_class = "flex flex-row gap-8 justify-between w-full sm:px-1";
-    let data_title_class = "font-medium text-sm opacity-50 my-auto";
-
     rsx! {
         div {
-            class: "{container_class}",
+            class: "flex flex-row gap-8 justify-between",
             p {
-                class: "{data_title_class}",
+                class: "text-gray-300 font-medium text-sm my-auto",
                 "Priority Fee Strategy"
             }
             select {
-                class: "text-right bg-transparent dark:text-white hover:cursor-pointer py-1",
+                class: "bg-transparent dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
+                // class: "text-right bg-transparent dark:text-white hover:cursor-pointer py-1",
                 onchange: move |e| {
                     if let Ok(s) = PriorityFeeStrategy::from_str(&e.value()) {
                         priority_fee_strategy.set(s);
@@ -301,7 +299,7 @@ pub fn PriorityFeeConfig() -> Element {
                 class: "flex flex-row flex-shrink h-min gap-1 shrink mb-auto",
                 input {
                     disabled: priority_fee_strategy.read().eq(&PriorityFeeStrategy::Dynamic),
-                    class: "bg-transparent dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
+                    class: "bg-transparent disabled:opacity-50 dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
                     dir: "rtl",
                     step: 100_000,
                     min: 0,

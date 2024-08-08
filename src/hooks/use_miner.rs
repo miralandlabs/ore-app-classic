@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 use dioxus_sdk::utils::channel::use_channel;
 
 use super::{
-    use_gateway, use_miner_toolbar_state, use_power_level, use_priority_fee, use_proof, use_pubkey,
+    use_gateway, use_miner_toolbar_state, use_power_level, use_priority_fee, use_priority_fee_strategy, use_proof, use_pubkey
 };
 use crate::miner::{Miner, WebWorkerResponse, WEB_WORKERS};
 
@@ -12,9 +12,10 @@ pub fn use_miner() -> Signal<Miner> {
     let mut proof = use_proof();
     let power_level = use_power_level();
     let priority_fee = use_priority_fee();
+    let priority_fee_strategy = use_priority_fee_strategy();
     let pubkey = use_pubkey();
     let gateway = use_gateway();
-    let miner = use_signal(|| Miner::new(cx.clone(), power_level, priority_fee));
+    let miner = use_signal(|| Miner::new(cx.clone(), power_level, priority_fee, priority_fee_strategy));
 
     // Process web worker results
     use_future(move || {

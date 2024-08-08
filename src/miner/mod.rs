@@ -20,12 +20,10 @@ use web_sys::{window, Worker};
 pub use web_worker::*;
 
 use crate::{
-    gateway::{signer, Gateway, GatewayResult, CU_LIMIT_MINE},
-    hooks::{
+    components::PriorityFeeStrategy, gateway::{self, signer, Gateway, GatewayResult, CU_LIMIT_MINE}, hooks::{
         MinerStatus, MinerStatusMessage, MinerToolbarState, PowerLevel, PriorityFee,
         ReadMinerToolbarState, UpdateMinerToolbarState,
-    },
-    utils,
+    }, utils
 };
 
 // Number of physical cores on machine
@@ -43,6 +41,7 @@ fn fetch_logical_processors() -> usize {
 pub struct Miner {
     power_level: Signal<PowerLevel>,
     priority_fee: Signal<PriorityFee>,
+    priority_fee_strategy: Signal<PriorityFeeStrategy>,
     web_workers: Vec<Worker>,
 }
 
@@ -51,10 +50,12 @@ impl Miner {
         cx: UseChannel<WebWorkerResponse>,
         power_level: Signal<PowerLevel>,
         priority_fee: Signal<PriorityFee>,
+        priority_fee_strategy: Signal<PriorityFeeStrategy>,
     ) -> Self {
         Self {
             power_level: power_level.clone(),
             priority_fee: priority_fee.clone(),
+            priority_fee_strategy: priority_fee_strategy.clone(),
             web_workers: (0..*WEB_WORKERS)
                 .map(|_| create_web_worker(cx.clone()))
                 .collect(),
@@ -130,10 +131,18 @@ impl Miner {
             }
         }
 
+        // let priority_fee = self.priority_fee.read().0;
+        let priority_fee = if self.priority_fee_strategy.read().eq(&PriorityFeeStrategy::Dynamic) {
+            gateway::get_recent_priority_fee_estimate(true).await + 20_000
+        } else {
+            self.priority_fee.read().0
+        };
+        log::info!("current priority fee: {}", priority_fee);
+        self.priority_fee.clone().set(PriorityFee(priority_fee));  // set signal
+
         // Update toolbar state
         toolbar_state.set_display_hash(Blake3Hash::new_from_array(best_hash));
-        toolbar_state.set_status_message(MinerStatusMessage::Submitting);
-        let priority_fee = self.priority_fee.read().0;
+        toolbar_state.set_status_message(MinerStatusMessage::Submitting(0, priority_fee));
 
         // Submit solution
         match submit_solution(&gateway, best_solution, priority_fee).await {

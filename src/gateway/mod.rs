@@ -2,8 +2,14 @@ mod error;
 mod pfee;
 mod pubkey;
 
+// MI
+use crate::hooks::{
+    use_miner_toolbar_state, use_priority_fee,
+    MinerStatusMessage, UpdateMinerToolbarState,
+};
 use async_std::future::{timeout, Future};
 use cached::proc_macro::cached;
+use dioxus::signals::Readable;
 pub use error::*;
 use gloo_storage::{LocalStorage, Storage};
 use ore_api::{
@@ -245,11 +251,16 @@ impl Gateway {
         //     }
         // }
 
+        // MI
+        let mut toolbar_state = use_miner_toolbar_state();
+        let priority_fee = use_priority_fee();
+
         // Submit tx
         tx.sign(&[&signer], hash);
         let mut attempts = 0;
         loop {
             log::info!("Attempt: {:?}", attempts);
+            toolbar_state.set_status_message(MinerStatusMessage::Submitting(attempts as u64, priority_fee.read().0));
             match self.rpc.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
                     log::info!("Sig: {:?}", sig);

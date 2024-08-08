@@ -69,13 +69,13 @@ pub fn Mine() -> Element {
                                             }
                                         }
                                     }
-                                    MinerStatusMessage::Submitting => {
+                                    MinerStatusMessage::Submitting(attempts, priority_fee) => {
                                         rsx! {
                                             div {
                                                 class: "flex flex-row gap-2",
                                                 p {
                                                     class: "text-lg text-white",
-                                                    "Submitting best hash..."
+                                                    "Submitting transaction... (attempt {attempts}, priority fee {priority_fee})"
                                                 }
                                                 Spinner {
                                                     class: "my-auto"
@@ -93,7 +93,7 @@ pub fn Mine() -> Element {
                                     }
                                 }
                                 match toolbar_state.status_message() {
-                                    MinerStatusMessage::Searching | MinerStatusMessage::Submitting => {
+                                    MinerStatusMessage::Searching | MinerStatusMessage::Submitting(_,_) => {
                                         rsx! {
                                             p {
                                                 class: "font-mono text-sm truncate shrink text-gray-300",
@@ -260,7 +260,7 @@ pub fn PriorityFeeStrategyConfig() -> Element {
             class: "flex flex-row gap-8 justify-between",
             p {
                 class: "text-gray-300 font-medium text-sm my-auto",
-                "Priority Fee Strategy"
+                "Priority fee strategy"
             }
             select {
                 class: "bg-transparent dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",

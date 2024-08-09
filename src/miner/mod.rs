@@ -20,10 +20,13 @@ use web_sys::{window, Worker};
 pub use web_worker::*;
 
 use crate::{
-    components::PriorityFeeStrategy, gateway::{self, signer, Gateway, GatewayResult, CU_LIMIT_MINE}, hooks::{
-        MinerStatus, MinerStatusMessage, MinerToolbarState, PowerLevel, PriorityFee,
-        ReadMinerToolbarState, UpdateMinerToolbarState,
-    }, utils
+    components::PriorityFeeStrategy,
+    gateway::{self, signer, ComputeBudget, Gateway, GatewayResult, CU_LIMIT_MINE},
+    hooks::{
+        use_priority_fee_strategy, MinerStatus, MinerStatusMessage, MinerToolbarState, PowerLevel,
+        PriorityFee, ReadMinerToolbarState, UpdateMinerToolbarState,
+    },
+    utils,
 };
 
 // Number of physical cores on machine
@@ -132,13 +135,17 @@ impl Miner {
         }
 
         // let priority_fee = self.priority_fee.read().0;
-        let priority_fee = if self.priority_fee_strategy.read().eq(&PriorityFeeStrategy::Dynamic) {
-            gateway::get_recent_priority_fee_estimate(true).await + 20_000
+        let priority_fee = if self
+            .priority_fee_strategy
+            .read()
+            .eq(&PriorityFeeStrategy::Dynamic)
+        {
+            gateway::get_recent_priority_fee_estimate(true).await
         } else {
             self.priority_fee.read().0
         };
         log::info!("current priority fee: {}", priority_fee);
-        self.priority_fee.clone().set(PriorityFee(priority_fee));  // set signal
+        self.priority_fee.clone().set(PriorityFee(priority_fee)); // set signal
 
         // Update toolbar state
         toolbar_state.set_display_hash(Blake3Hash::new_from_array(best_hash));
@@ -158,8 +165,7 @@ impl Miner {
                                 .last_hash_at
                                 .saturating_add(60)
                                 .saturating_sub(clock.unix_timestamp)
-                                .max(0)
-                                as u64;
+                                .max(0) as u64;
                             self.start_mining(proof.challenge.into(), 0, cutoff_time)
                                 .await;
                         } else {
@@ -186,6 +192,9 @@ pub async fn submit_solution(
     priority_fee: u64,
 ) -> GatewayResult<Signature> {
     let signer = signer();
+    // let priority_fee = use_priority_fee();
+    let priority_fee_strategy = use_priority_fee_strategy();
+
     // Build ixs
     let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_MINE);
     let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
@@ -209,7 +218,15 @@ pub async fn submit_solution(
     ixs.push(ix);
 
     // Send and configm
-    gateway.send_and_confirm(&ixs, false, false).await
+    let cb = if priority_fee_strategy
+        .read()
+        .eq(&PriorityFeeStrategy::Dynamic)
+    {
+        ComputeBudget::Dynamic
+    } else {
+        ComputeBudget::Fixed(priority_fee as u32)
+    };
+    gateway.send_and_confirm(&ixs, cb, false).await
 }
 
 async fn needs_reset(gateway: &Rc<Gateway>) -> bool {

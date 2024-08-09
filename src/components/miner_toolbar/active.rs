@@ -41,7 +41,7 @@ pub fn MinerToolbarActive(miner: Signal<Miner>) -> Element {
                         rsx! {
                             p {
                                 class: "truncate flex-shrink flex-auto text-sm text-white font-medium opacity-80 my-auto ml-2",
-                                "Submitting transaction... (attempt {attempts}, priority fee {priority_fee})"
+                                "Submitting transaction... (attempt {attempts}, priority fee {priority_fee} microlamports)"
                             }
                         }
                     }

@@ -3,9 +3,13 @@ mod pfee;
 mod pubkey;
 
 // MI
-use crate::hooks::{
-    use_miner_toolbar_state, use_priority_fee,
-    MinerStatusMessage, UpdateMinerToolbarState,
+use crate::{
+    components::PriorityFeeStrategy,
+    gateway,
+    hooks::{
+        use_miner_toolbar_state, use_priority_fee, use_priority_fee_strategy, MinerStatusMessage,
+        UpdateMinerToolbarState,
+    },
 };
 use async_std::future::{timeout, Future};
 use cached::proc_macro::cached;
@@ -13,11 +17,13 @@ use dioxus::signals::Readable;
 pub use error::*;
 use gloo_storage::{LocalStorage, Storage};
 use ore_api::{
-    state::{Bus, Config, Proof},
     consts::{BUS_ADDRESSES, CONFIG_ADDRESS},
+    state::{Bus, Config, Proof},
 };
 // use ore_types::{response::ListTransfersResponse};
 use ore_utils::AccountDeserialize;
+pub use pfee::*;
+pub use pubkey::*;
 use rand::Rng;
 use solana_client_wasm::{
     solana_sdk::{
@@ -46,11 +52,9 @@ use solana_extra_wasm::{
 };
 use std::str::FromStr;
 use web_time::Duration;
-pub use pfee::*;
-pub use pubkey::*;
 
 pub const API_URL: &str = "https://ore-v2-api-lthm.onrender.com"; // MI: dummy
-// royal: ore-app-classic ironforge RPC Endpoint
+                                                                  // royal: ore-app-classic ironforge RPC Endpoint
 pub const RPC_URL: &str = "https://rpc.ironforge.network/mainnet?apiKey=01J3ZM0ECN63VB741S74YPCFWS";
 
 pub const CU_LIMIT_CREATE_ATA: u32 = 85_000; // MI added
@@ -61,10 +65,18 @@ pub const CU_LIMIT_MINE: u32 = 500_000;
 pub const CU_LIMIT_UPGRADE: u32 = 30_000; // MI
 
 const RPC_RETRIES: usize = 0;
-const GATEWAY_RETRIES: usize = 64; // MI: vanilla 128
-const CONFIRM_RETRIES: usize = 10; // MI: vanilla 20
-const CONFIRM_DELAY: u64 = 1000;  // MI: vanilla 500
+const GATEWAY_RETRIES: usize = 64;
+const CONFIRM_RETRIES: usize = 8;
+
+const CONFIRM_DELAY: u64 = 500;
+const GATEWAY_DELAY: u64 = 0; //300;
+
 const TIP_AMOUNT: u64 = 100_000;
+
+pub enum ComputeBudget {
+    Dynamic,
+    Fixed(u32),
+}
 
 pub struct Gateway {
     pub rpc: WasmClient,
@@ -150,25 +162,34 @@ impl Gateway {
     pub async fn send_and_confirm(
         &self,
         ixs: &[Instruction],
-        _dynamic_cus: bool,
+        compute_budget: ComputeBudget,
         skip_confirm: bool,
     ) -> GatewayResult<Signature> {
         let signer = signer();
-        let (hash, slot) = self
-            .rpc
-            .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())
-            .await
-            .map_err(GatewayError::from)?;
-        let send_cfg = RpcSendTransactionConfig {
-            skip_preflight: true,
-            preflight_commitment: Some(CommitmentLevel::Confirmed),
-            encoding: Some(UiTransactionEncoding::Base64),
-            max_retries: Some(RPC_RETRIES),
-            min_context_slot: Some(slot),
-        };
+        let priority_fee = use_priority_fee();
+        let priority_fee_strategy = use_priority_fee_strategy();
 
-        // If default rpc, add tip
-        let mut ixs = ixs.to_vec();
+        // Set compute budget
+        let mut final_ixs = vec![];
+        match compute_budget {
+            ComputeBudget::Dynamic => {
+                // TODO simulate
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(1_400_000))
+            }
+            ComputeBudget::Fixed(cus) => {
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus))
+            }
+        }
+
+        // Set compute unit price
+        final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(
+            priority_fee.read().0,
+        ));
+
+        // Add in user instructions
+        final_ixs.extend_from_slice(ixs);
+
+        // Add tip collection instructions
         if self.rpc_url.eq(RPC_URL) {
             let mut rng = rand::thread_rng();
             let tip_accounts = &[
@@ -181,8 +202,9 @@ impl Gateway {
                 &tip_accounts[i],
                 TIP_AMOUNT,
             );
-            ixs.push(ix);
-        } else { // half tip
+            final_ixs.push(ix);
+        } else {
+            // half tip
             let mut rng = rand::thread_rng();
             let tip_accounts = &[
                 // Miraland donation account only
@@ -194,85 +216,69 @@ impl Gateway {
                 &tip_accounts[i],
                 TIP_AMOUNT / 2,
             );
-            ixs.push(ix);
+            final_ixs.push(ix);
         }
 
         // Build tx
-        let mut tx = Transaction::new_with_payer(ixs.as_slice(), Some(&signer.pubkey()));
-
-        // Simulate tx, if necessary
-        // let mut sim_attempts = 0;
-        // 'simulate: loop {
-        //     let sim_res = self
-        //         .rpc
-        //         .simulate_transaction_with_config(
-        //             &tx,
-        //             RpcSimulateTransactionConfig {
-        //                 sig_verify: false,
-        //                 replace_recent_blockhash: true,
-        //                 commitment: Some(CommitmentConfig::confirmed()),
-        //                 encoding: Some(UiTransactionEncoding::Base64),
-        //                 accounts: None,
-        //                 min_context_slot: Some(slot),
-        //             },
-        //         )
-        //         .await;
-        //     match sim_res {
-        //         Ok(sim_res) => {
-        //             if let Some(err) = sim_res.err {
-        //                 println!("Simulaton error: {:?}", err);
-        //                 sim_attempts += 1;
-        //             } else if let Some(units_consumed) = sim_res.units_consumed {
-        //                 if dynamic_cus {
-        //                     println!("Dynamic CUs: {:?}", units_consumed);
-        //                     let cu_budget_ix = ComputeBudgetInstruction::set_compute_unit_limit(
-        //                         units_consumed as u32 + 1000,
-        //                     );
-        //                     let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(
-        //                         DEFAULT_PRIORITY_FEE,
-        //                     );
-        //                     let mut final_ixs = vec![];
-        //                     final_ixs.extend_from_slice(&[cu_budget_ix, cu_price_ix]);
-        //                     final_ixs.extend_from_slice(&ixs);
-        //                     tx = Transaction::new_with_payer(&final_ixs, Some(&signer.pubkey()));
-        //                 }
-        //                 break 'simulate;
-        //             }
-        //         }
-        //         Err(err) => {
-        //             println!("Simulaton error: {:?}", err);
-        //             sim_attempts += 1;
-        //         }
-        //     }
-
-        //     // Return if sim attempts exceeded
-        //     if sim_attempts.gt(&SIMULATION_RETRIES) {
-        //         return Err(GatewayError::SimulationFailed);
-        //     }
-        // }
-
-        // MI
-        let mut toolbar_state = use_miner_toolbar_state();
-        let priority_fee = use_priority_fee();
+        let send_cfg = RpcSendTransactionConfig {
+            skip_preflight: true,
+            preflight_commitment: Some(CommitmentLevel::Confirmed),
+            encoding: Some(UiTransactionEncoding::Base64),
+            max_retries: Some(RPC_RETRIES),
+            min_context_slot: None,
+        };
+        let mut tx = Transaction::new_with_payer(final_ixs.as_slice(), Some(&signer.pubkey()));
 
         // Submit tx
-        tx.sign(&[&signer], hash);
+        let mut toolbar_state = use_miner_toolbar_state();
         let mut attempts = 0;
         loop {
             log::info!("Attempt: {:?}", attempts);
-            toolbar_state.set_status_message(MinerStatusMessage::Submitting(attempts as u64, priority_fee.read().0));
+            toolbar_state.set_status_message(MinerStatusMessage::Submitting(
+                attempts as u64,
+                priority_fee.read().0,
+            ));
+            // Sign tx with a new blockhash (after approximately ~45 sec)
+            if attempts % 10 == 0 {
+                // Reset the compute unit price
+                let fee = if priority_fee_strategy
+                    .read()
+                    .eq(&PriorityFeeStrategy::Dynamic)
+                {
+                    gateway::get_recent_priority_fee_estimate(true).await
+                } else {
+                    priority_fee.read().0
+                };
+
+                toolbar_state
+                    .set_status_message(MinerStatusMessage::Submitting(attempts as u64, fee));
+
+                final_ixs.remove(1);
+                final_ixs.insert(1, ComputeBudgetInstruction::set_compute_unit_price(fee));
+
+                // Resign the tx
+                let (hash, _slot) = self
+                    .rpc
+                    .get_latest_blockhash_with_commitment(CommitmentConfig {
+                        commitment: self.rpc.commitment(),
+                    })
+                    .await
+                    .unwrap();
+                tx.sign(&[&signer], hash);
+            }
+
+            // Send transaction
             match self.rpc.send_transaction_with_config(&tx, send_cfg).await {
                 Ok(sig) => {
                     log::info!("Sig: {:?}", sig);
-
-                    // Confirm tx
+                    // Skip confirmation
                     if skip_confirm {
+                        // TODO: what msg to show on status bar?
                         return Ok(sig);
                     }
 
-                    // Confirm tx
+                    // Confirm transaction
                     for _ in 0..CONFIRM_RETRIES {
-                        // Delay before confirming
                         async_std::task::sleep(Duration::from_millis(CONFIRM_DELAY)).await;
 
                         // Fetch transaction status
@@ -319,7 +325,7 @@ impl Gateway {
             }
 
             // Retry
-            // async_std::task::sleep(Duration::from_millis(2000)).await;
+            async_std::task::sleep(Duration::from_millis(GATEWAY_DELAY)).await;
             attempts += 1;
             if attempts >= GATEWAY_RETRIES {
                 return Err(GatewayError::TransactionTimeout);
@@ -331,6 +337,8 @@ impl Gateway {
     pub async fn register_ore(&self) -> GatewayResult<()> {
         // Return early, if account is already initialized
         let signer = signer();
+        let priority_fee = use_priority_fee();
+        let priority_fee_strategy = use_priority_fee_strategy();
         let proof_address = proof_pubkey(signer.pubkey());
         if self.rpc.get_account(&proof_address).await.is_ok() {
             return Ok(());
@@ -338,7 +346,15 @@ impl Gateway {
 
         // Sign and send transaction.
         let ix = ore_api::instruction::open(signer.pubkey(), signer.pubkey(), signer.pubkey());
-        match self.send_and_confirm(&[ix], true, false).await {
+        let cb = if priority_fee_strategy
+            .read()
+            .eq(&PriorityFeeStrategy::Dynamic)
+        {
+            ComputeBudget::Dynamic
+        } else {
+            ComputeBudget::Fixed(priority_fee.read().0 as u32)
+        };
+        match self.send_and_confirm(&[ix], cb, false).await {
             Ok(_) => Ok(()),
             Err(_) => Err(GatewayError::FailedRegister),
         }
@@ -346,6 +362,8 @@ impl Gateway {
 
     pub async fn claim_ore(&self, amount: u64, priority_fee: u64) -> GatewayResult<Signature> {
         let signer = signer();
+        // let priority_fee = use_priority_fee();
+        let priority_fee_strategy = use_priority_fee_strategy();
         let beneficiary = ore_token_account_address(signer.pubkey());
 
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_CLAIM);
@@ -367,36 +385,55 @@ impl Gateway {
         }
         let ix = ore_api::instruction::claim(signer.pubkey(), beneficiary, amount);
         ixs.push(ix);
-        // self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], false, false)
-        self.send_and_confirm(&ixs, false, false)
-            .await
+        let cb = if priority_fee_strategy
+            .read()
+            .eq(&PriorityFeeStrategy::Dynamic)
+        {
+            ComputeBudget::Dynamic
+        } else {
+            ComputeBudget::Fixed(priority_fee as u32)
+        };
+        self.send_and_confirm(&ixs, cb, false).await
     }
 
     // MI
     pub async fn stake_ore(&self, amount: u64, priority_fee: u64) -> GatewayResult<Signature> {
         let signer = signer();
+        // let priority_fee = use_priority_fee();
+        let priority_fee_strategy = use_priority_fee_strategy();
         let sender = ore_token_account_address(signer.pubkey());
 
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_STAKE);
         let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
         let ix = ore_api::instruction::stake(signer.pubkey(), sender, amount);
 
-        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], false, false)
+        let cb = if priority_fee_strategy
+            .read()
+            .eq(&PriorityFeeStrategy::Dynamic)
+        {
+            ComputeBudget::Dynamic
+        } else {
+            ComputeBudget::Fixed(priority_fee as u32)
+        };
+        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], cb, false)
             .await
     }
 
     // MI
     pub async fn upgrade_ore(&self, amount: u64, priority_fee: u64) -> GatewayResult<Signature> {
         let signer = signer();
+        // let priority_fee = use_priority_fee();
+        let priority_fee_strategy = use_priority_fee_strategy();
 
         // Build initial ixs
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_UPGRADE);
         let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
 
         let mut ixs = vec![cu_limit_ix, cu_price_ix];
-    
+
         // Create target(v2) token account if necessary
-        if self.get_token_account_ore_from_pubkey(signer.pubkey())
+        if self
+            .get_token_account_ore_from_pubkey(signer.pubkey())
             .await
             .is_err()
         {
@@ -418,10 +455,15 @@ impl Gateway {
             amount,
         ));
 
-        // self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], false, false)
-        //     .await
-
-         self.send_and_confirm(&ixs, false, false).await
+        let cb = if priority_fee_strategy
+            .read()
+            .eq(&PriorityFeeStrategy::Dynamic)
+        {
+            ComputeBudget::Dynamic
+        } else {
+            ComputeBudget::Fixed(priority_fee as u32)
+        };
+        self.send_and_confirm(&ixs, cb, false).await
     }
 
     pub async fn transfer_ore(
@@ -429,13 +471,16 @@ impl Gateway {
         amount: u64,
         to: Pubkey,
         memo: String,
-        priority_fee: u64
+        priority_fee: u64,
     ) -> GatewayResult<Signature> {
         // Create recipient token account, if necessary
         self.create_token_account_ore(to, priority_fee).await?;
 
         // Submit transfer ix
         let signer = signer();
+        // let priority_fee = use_priority_fee();
+        let priority_fee_strategy = use_priority_fee_strategy();
+
         let from_token_account = ore_token_account_address(signer.pubkey());
         let to_token_account = ore_token_account_address(to);
 
@@ -452,13 +497,28 @@ impl Gateway {
             amount,
         )
         .unwrap();
-        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, memo_ix, transfer_ix], false, false)
+
+        let cb = if priority_fee_strategy
+            .read()
+            .eq(&PriorityFeeStrategy::Dynamic)
+        {
+            ComputeBudget::Dynamic
+        } else {
+            ComputeBudget::Fixed(priority_fee as u32)
+        };
+        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, memo_ix, transfer_ix], cb, false)
             .await
     }
 
-    pub async fn create_token_account_ore(&self, owner: Pubkey, priority_fee: u64) -> GatewayResult<Pubkey> {
+    pub async fn create_token_account_ore(
+        &self,
+        owner: Pubkey,
+        priority_fee: u64,
+    ) -> GatewayResult<Pubkey> {
         // Build instructions.
         let signer = signer();
+        // let priority_fee = use_priority_fee();
+        let priority_fee_strategy = use_priority_fee_strategy();
 
         // Check if account already exists.
         let token_account_address = ore_token_account_address(owner);
@@ -494,7 +554,19 @@ impl Gateway {
             &ore_api::consts::MINT_ADDRESS,
             &spl_token::id(),
         );
-        match self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], false, false).await {
+
+        let cb = if priority_fee_strategy
+            .read()
+            .eq(&PriorityFeeStrategy::Dynamic)
+        {
+            ComputeBudget::Dynamic
+        } else {
+            ComputeBudget::Fixed(priority_fee as u32)
+        };
+        match self
+            .send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], cb, false)
+            .await
+        {
             Ok(_) => {}
             Err(_) => return Err(GatewayError::FailedAta),
         }
@@ -542,7 +614,6 @@ impl Gateway {
     //         Err(e) => Err(e.into()),
     //     }
     // }
-
 
     // // asserts that the token account is already initialized
     // pub async fn get_token_account_ore_from_pubkey_v1(

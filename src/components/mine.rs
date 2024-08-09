@@ -35,7 +35,7 @@ pub fn Mine() -> Element {
     // let mut priority_fee = use_priority_fee();
     // // let gateway = use_gateway();
     // use_future(move || async move {
-    //     let price = gateway::get_recent_priority_fee_estimate(true).await + 20_000;
+    //     let price = gateway::get_recent_priority_fee_estimate(true).await;
     //     priority_fee.set(PriorityFee(price));
     // });
 
@@ -75,7 +75,7 @@ pub fn Mine() -> Element {
                                                 class: "flex flex-row gap-2",
                                                 p {
                                                     class: "text-lg text-white",
-                                                    "Submitting transaction... (attempt {attempts}, priority fee {priority_fee})"
+                                                    "Submitting transaction... (attempt {attempts}, priority fee {priority_fee} microlamports)"
                                                 }
                                                 Spinner {
                                                     class: "my-auto"

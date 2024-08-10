@@ -34,7 +34,7 @@ pub fn Settings() -> Element {
 
     // MI
     let mut priority_fee_cap = use_priority_fee_cap();
-    let mut priority_fee_cap_input = use_signal(|| priority_fee_cap.read().0.clone());
+    let mut priority_fee_cap_input = use_signal(|| priority_fee_cap.read().0);
     let mut priority_fee_cap_error = use_signal::<Option<u64>>(|| None);
     let is_priority_fee_cap_edited = priority_fee_cap.read().0.ne(&*priority_fee_cap_input.read());
 
@@ -315,9 +315,9 @@ pub fn Settings() -> Element {
                             }
                         }
                         div {
-                            class: "w-full flex flex-auto flex-col gap-2 justify-end",
+                            class: "w-full flex flex-auto flex-col gap-2 justify-between",
                             div {
-                                class: "flex flex-row flex-shrink h-min gap-1 shrink mb-auto",
+                                class: "w-full flex flex-row justify-end flex-shrink h-min gap-1 shrink mb-auto",
                                 input {
                                     class: "bg-transparent dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
                                     dir: "rtl",
@@ -362,7 +362,7 @@ pub fn Settings() -> Element {
                                         button {
                                             class: "bg-green-500 hover:bg-green-600 active:bg-green-700 text-white rounded shrink ml-auto transition-colors px-2 py-1",
                                             onclick: move |_| {
-                                                priority_fee_cap.set(PriorityFeeCap(priority_fee_cap_input.read().clone()));
+                                                priority_fee_cap.set(PriorityFeeCap(*priority_fee_cap_input.read()));
                                             },
                                             "Save"
                                         }

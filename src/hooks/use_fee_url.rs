@@ -16,6 +16,6 @@ pub fn use_fee_url() -> Signal<FeeUrl> {
 }
 
 pub fn use_fee_url_provider() {
-    let fee_url = use_persistent(KEY, || FeeUrl(FEE_URL.to_string()));
-    use_context_provider(|| Signal::new(fee_url.get()));
+    let fee_url = use_persistent(KEY, || FeeUrl(FEE_URL.to_string())).get();
+    use_context_provider(|| Signal::new(fee_url));
 }

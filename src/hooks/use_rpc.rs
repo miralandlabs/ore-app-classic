@@ -16,6 +16,6 @@ pub fn use_rpc_url() -> Signal<RpcUrl> {
 }
 
 pub fn use_rpc_url_provider() {
-    let rpc = use_persistent(KEY, || RpcUrl(RPC_URL.to_string()));
-    use_context_provider(|| Signal::new(rpc.get()));
+    let rpc = use_persistent(KEY, || RpcUrl(RPC_URL.to_string())).get();
+    use_context_provider(|| Signal::new(rpc));
 }

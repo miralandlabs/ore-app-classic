@@ -173,7 +173,9 @@ impl Gateway {
         skip_confirm: bool,
     ) -> GatewayResult<Signature> {
         let signer = signer();
+        log::info!("starting use priority fee..."); // MI
         let priority_fee = use_priority_fee();
+        log::info!("starting use priority fee strategy..."); // MI
         let priority_fee_strategy = use_priority_fee_strategy();
 
         // Set compute budget
@@ -234,6 +236,7 @@ impl Gateway {
             max_retries: Some(RPC_RETRIES),
             min_context_slot: None,
         };
+        log::info!("starting build tx via new_with_payer..."); // MI
         let mut tx = Transaction::new_with_payer(final_ixs.as_slice(), Some(&signer.pubkey()));
 
         // Submit tx

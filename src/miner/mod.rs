@@ -220,15 +220,8 @@ pub async fn submit_solution(
     ixs.push(ix);
 
     // Send and configm
-    let cb = if priority_fee_strategy
-        .read()
-        .eq(&PriorityFeeStrategy::Dynamic)
-    {
-        ComputeBudget::Dynamic
-    } else {
-        ComputeBudget::Fixed(priority_fee as u32)
-    };
-    gateway.send_and_confirm(&ixs, cb, false).await
+    log::info!("starting send-and-confirm..."); // MI
+    gateway.send_and_confirm(&ixs, gateway::CB, false).await
 }
 
 async fn needs_reset(gateway: &Rc<Gateway>) -> bool {

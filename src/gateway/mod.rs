@@ -81,7 +81,7 @@ pub enum ComputeBudget {
     Fixed(u32),
 }
 
-const CB: ComputeBudget = ComputeBudget::Fixed(DEFAULT_CU_LIMIT);
+pub const CB: ComputeBudget = ComputeBudget::Fixed(DEFAULT_CU_LIMIT);
 
 pub struct Gateway {
     pub rpc: WasmClient,

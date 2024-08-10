@@ -13,7 +13,7 @@ use crate::{
     hooks::{
         use_appearance_provider, use_explorer_provider, use_is_onboarded_provider,
         use_power_level_provider, use_priority_fee_provider, use_priority_fee_strategy_provider,
-        use_rpc_url_provider, use_show_backup_warning_provider,
+        use_fee_url_provider, use_rpc_url_provider, use_show_backup_warning_provider,
     },
     route::Route,
 };
@@ -32,6 +32,7 @@ pub fn App() -> Element {
     use_priority_fee_strategy_provider();
     use_priority_fee_provider();
     use_show_backup_warning_provider();
+    use_fee_url_provider();
     use_rpc_url_provider();
 
     // Render

@@ -238,10 +238,10 @@ pub fn Settings() -> Element {
                         div {
                             p {
                                 class: "{data_title_class}",
-                                "Priority fee estimate"
+                                "Priority Fee Estimate"
                             }
                             p {
-                                class: "text-left text-orange-500 max-w-144",
+                                class: "text-left text-white max-w-144",
                                 "This url is free for now and provided as-is. You are encouraged to use your own fee estimation url instead."
                             }
                         }

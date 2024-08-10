@@ -13,9 +13,9 @@ use ore_api::{
 use rand::Rng;
 use serde_wasm_bindgen::to_value;
 use solana_client_wasm::solana_sdk::{
-    compute_budget::ComputeBudgetInstruction, pubkey::Pubkey, signature::Signature, signer::Signer,
+    keccak::Hash as KeccakHash, compute_budget::ComputeBudgetInstruction, pubkey::Pubkey,
+    signature::Signature, signer::Signer,
 };
-use solana_sdk::keccak::Hash as KeccakHash;
 use web_sys::{window, Worker};
 pub use web_worker::*;
 
@@ -181,6 +181,7 @@ impl Miner {
 
             // Display error
             Err(err) => {
+                toolbar_state.set_status(MinerStatus::Error);
                 toolbar_state.set_status_message(MinerStatusMessage::Error);
                 log::error!("Failed to submit hash: {:?}", err);
             }
@@ -195,7 +196,7 @@ pub async fn submit_solution(
 ) -> GatewayResult<Signature> {
     let signer = signer();
     // let priority_fee = use_priority_fee();
-    let priority_fee_strategy = use_priority_fee_strategy();
+    // let priority_fee_strategy = use_priority_fee_strategy();
 
     // Build ixs
     let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_MINE);
@@ -205,6 +206,7 @@ pub async fn submit_solution(
 
     // Reset if needed
     // if needs_reset(gateway).await { // MI: vanilla
+    log::info!("checking if reset required..."); // MI
     if needs_reset(gateway).await && rand::thread_rng().gen_range(0..100).eq(&0) {
         ixs.push(ore_api::instruction::reset(signer.pubkey()));
     }

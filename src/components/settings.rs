@@ -315,11 +315,11 @@ pub fn Settings() -> Element {
                             }
                         }
                         div {
-                            class: "flex flex-auto flex-col gap-2",
+                            class: "w-full flex flex-auto flex-col gap-2 justify-end",
                             div {
                                 class: "flex flex-row flex-shrink h-min gap-1 shrink mb-auto",
                                 input {
-                                    class: "bg-transparent disabled:opacity-50 dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
+                                    class: "bg-transparent dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
                                     dir: "rtl",
                                     step: 100_000,
                                     min: 0,

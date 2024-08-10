@@ -25,7 +25,7 @@ pub fn SendConfirm(
     let gateway = use_gateway();
 
     use_future(move || async move {
-        let price = gateway::get_recent_priority_fee_estimate(true).await;
+        let price = gateway::get_recent_priority_fee_estimate().await.unwrap();
         priority_fee.set(PriorityFee(price));
     });
 

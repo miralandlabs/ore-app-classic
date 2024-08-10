@@ -7,7 +7,7 @@ pub type GatewayResult<T> = Result<T, GatewayError>;
 pub enum GatewayError {
     FailedDeserialization,
     FailedAta,
-    FailedRegister,
+    FailedOpen,
     TransactionTimeout,
     NetworkUnavailable,
     AccountNotFound,

@@ -4,9 +4,10 @@ use dioxus::prelude::*;
 
 use crate::gateway::{Gateway, API_URL};
 
-use super::use_rpc_url;
+use super::{use_fee_url, use_rpc_url};
 
 pub fn use_gateway() -> Rc<Gateway> {
     let rpc_url = use_rpc_url().read().0.clone();
-    Rc::new(Gateway::new(API_URL.to_string(), rpc_url))
+    let fee_url = use_fee_url().read().0.clone();
+    Rc::new(Gateway::new(API_URL.to_string(), rpc_url, fee_url))
 }

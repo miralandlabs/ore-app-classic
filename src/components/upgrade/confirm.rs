@@ -20,7 +20,7 @@ pub fn UpgradeConfirm(amount: u64, upgrade_step: Signal<UpgradeStep>) -> Element
     let gateway = use_gateway();
 
     use_future(move || async move {
-        let price = gateway::get_recent_priority_fee_estimate(true).await;
+        let price = gateway::get_recent_priority_fee_estimate().await.unwrap();
         priority_fee.set(PriorityFee(price));
     });
 

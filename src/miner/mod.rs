@@ -140,7 +140,7 @@ impl Miner {
             .read()
             .eq(&PriorityFeeStrategy::Dynamic)
         {
-            gateway::get_recent_priority_fee_estimate(true).await
+            gateway::get_recent_priority_fee_estimate().await.unwrap()
         } else {
             self.priority_fee.read().0
         };

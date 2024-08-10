@@ -315,7 +315,7 @@ pub fn Settings() -> Element {
                             }
                         }
                         div {
-                            class: "w-full flex flex-auto flex-col gap-2 justify-between",
+                            class: "w-full flex flex-auto flex-col gap-2",
                             div {
                                 class: "w-full flex flex-row justify-end flex-shrink h-min gap-1 shrink mb-auto",
                                 input {
@@ -328,7 +328,7 @@ pub fn Settings() -> Element {
                                     value: "{priority_fee_cap.read().0}",
                                     oninput: move |e| {
                                         if let Ok(v) = e.value().parse::<u64>() {
-                                            priority_fee_cap.set(PriorityFeeCap(v));
+                                            priority_fee_cap_input.set(v);
                                         }
                                     }
                                 }

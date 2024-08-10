@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use dioxus::prelude::*;
 use num_format::{Locale, ToFormattedString};
 use serde::Deserialize;
-use solana_client_wasm::solana_sdk::blake3::Hash as Blake3Hash;
+use solana_client_wasm::solana_sdk::keccak::Hash as KeccakHash;
 use solana_extra_wasm::program::spl_token::amount_to_ui_amount;
 use web_time::{Duration, Instant};
 
@@ -343,7 +343,7 @@ fn SectionA(text_color: TextColor) -> Element {
         TextColor::White => "text-white",
     };
 
-    let mut sample_hash = use_signal(|| Blake3Hash::new_unique());
+    let mut sample_hash = use_signal(|| KeccakHash::new_unique());
 
     let hashrate = use_resource(move || async move {
         let size = 10u64;
@@ -361,7 +361,7 @@ fn SectionA(text_color: TextColor) -> Element {
     use_future(move || async move {
         loop {
             async_std::task::sleep(std::time::Duration::from_millis(125)).await;
-            sample_hash.set(Blake3Hash::new_unique());
+            sample_hash.set(KeccakHash::new_unique());
         }
     });
 

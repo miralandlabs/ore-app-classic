@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use solana_client_wasm::solana_sdk::blake3::Hash as Blake3Hash;
+use solana_client_wasm::solana_sdk::keccak::Hash as KeccakHash;
 
 use crate::{
     components::StopButton,
@@ -18,7 +18,7 @@ pub fn MinerToolbarActive(miner: Signal<Miner>) -> Element {
         loop {
             async_std::task::sleep(std::time::Duration::from_millis(125)).await;
             if let MinerStatusMessage::Searching = toolbar_state.status_message() {
-                toolbar_state.set_display_hash(Blake3Hash::new_unique());
+                toolbar_state.set_display_hash(KeccakHash::new_unique());
             }
         }
     });

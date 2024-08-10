@@ -15,7 +15,7 @@ use serde_wasm_bindgen::to_value;
 use solana_client_wasm::solana_sdk::{
     compute_budget::ComputeBudgetInstruction, pubkey::Pubkey, signature::Signature, signer::Signer,
 };
-use solana_sdk::blake3::Hash as Blake3Hash;
+use solana_sdk::keccak::Hash as KeccakHash;
 use web_sys::{window, Worker};
 pub use web_worker::*;
 
@@ -146,9 +146,10 @@ impl Miner {
         };
         log::info!("current priority fee: {}", priority_fee);
         self.priority_fee.clone().set(PriorityFee(priority_fee)); // set signal
+        log::info!("set priority fee signal: {}", priority_fee);
 
         // Update toolbar state
-        toolbar_state.set_display_hash(Blake3Hash::new_from_array(best_hash));
+        toolbar_state.set_display_hash(KeccakHash::new_from_array(best_hash));
         toolbar_state.set_status_message(MinerStatusMessage::Submitting(0, priority_fee));
 
         // Submit solution

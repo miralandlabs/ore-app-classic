@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use solana_sdk::blake3::Hash as Blake3Hash;
+use solana_sdk::keccak::Hash as KeccakHash;
 
 #[derive(Copy, Clone, Debug)]
 pub enum MinerStatus {
@@ -21,7 +21,7 @@ pub enum MinerStatusMessage {
 pub struct MinerToolbarState {
     pub status: MinerStatus,
     pub status_message: MinerStatusMessage,
-    pub display_hash: Blake3Hash,
+    pub display_hash: KeccakHash,
     // pub is_open: bool,
 }
 
@@ -34,7 +34,7 @@ pub fn use_miner_toolbar_state_provider() {
         Signal::new(MinerToolbarState {
             status: MinerStatus::NotStarted,
             status_message: MinerStatusMessage::Searching,
-            display_hash: Blake3Hash::new_unique(),
+            display_hash: KeccakHash::new_unique(),
             // is_open: false,
         })
     });
@@ -67,7 +67,7 @@ impl ReadMinerToolbarState for Signal<MinerToolbarState> {
 
 pub trait UpdateMinerToolbarState {
     // fn set_is_open(&mut self, is_open: bool);
-    fn set_display_hash(&mut self, hash: Blake3Hash);
+    fn set_display_hash(&mut self, hash: KeccakHash);
     fn set_status_message(&mut self, status_message: MinerStatusMessage);
     fn set_status(&mut self, status: MinerStatus);
     fn start(&mut self);
@@ -111,7 +111,7 @@ impl UpdateMinerToolbarState for Signal<MinerToolbarState> {
     //     self.set(new);
     // }
 
-    fn set_display_hash(&mut self, hash: Blake3Hash) {
+    fn set_display_hash(&mut self, hash: KeccakHash) {
         let old = self.read();
         let new = MinerToolbarState {
             status: old.status,

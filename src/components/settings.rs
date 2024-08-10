@@ -329,6 +329,7 @@ pub fn Settings() -> Element {
                                     oninput: move |e| {
                                         if let Ok(v) = e.value().parse::<u64>() {
                                             priority_fee_cap_input.set(v);
+                                            priority_fee_cap.set(PriorityFeeCap(v));
                                         }
                                     }
                                 }

@@ -223,7 +223,7 @@ pub async fn submit_solution(
 
     // Send and configm
     log::info!("starting send-and-confirm..."); // MI
-    gateway.send_and_confirm(&ixs, gateway::CB, false).await
+    gateway.clone().send_and_confirm(&ixs, gateway::CB, false).await
 }
 
 async fn needs_reset(gateway: &Rc<Gateway>) -> bool {

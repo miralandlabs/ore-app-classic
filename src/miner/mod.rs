@@ -153,10 +153,11 @@ impl Miner {
         toolbar_state.set_status_message(MinerStatusMessage::Submitting(0, priority_fee));
 
         // Submit solution
+        log::info!("submit solution..."); // MI
         match submit_solution(&gateway, best_solution, priority_fee).await {
             // Start mining again
-            Ok(_sig) => {
-                // log::info!("Sig: {}", sig); // MI
+            Ok(sig) => {
+                log::info!("Sig: {}", sig); // MI
                 proof.restart();
                 if let MinerStatus::Active = toolbar_state.status() {
                     if let Ok(proof) = gateway.get_proof(pubkey).await {

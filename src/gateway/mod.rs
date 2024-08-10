@@ -57,6 +57,8 @@ pub const FEE_URL: &str = "https://mainnet.helius-rpc.com/?api-key=cb135900-fab9
                                                                   // royal: ore-app-classic ironforge RPC Endpoint
 pub const RPC_URL: &str = "https://rpc.ironforge.network/mainnet?apiKey=01J3ZM0ECN63VB741S74YPCFWS";
 
+pub const PRIORITY_FEE_CAP: u64 = 1_000_000; // microlamport
+
 pub const CU_LIMIT_CREATE_ATA: u32 = 85_000; // MI added
 pub const CU_LIMIT_CLAIM: u32 = 12_000;
 pub const CU_LIMIT_STAKE: u32 = 12_000; // MI added

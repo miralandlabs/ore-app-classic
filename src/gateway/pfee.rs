@@ -1,4 +1,4 @@
-use crate::hooks::use_fee_url;
+use crate::hooks::{use_fee_url, use_priority_fee, use_priority_fee_cap};
 use dioxus::signals::Readable;
 use ore_api::consts::BUS_ADDRESSES;
 use reqwest::Client;
@@ -24,6 +24,8 @@ pub struct RpcPrioritizationFee {
 pub async fn get_recent_priority_fee_estimate() -> Result<u64, String> {
     // Get url
     let fee_url = use_fee_url();
+    let priority_fee = use_priority_fee();
+    let priority_fee_cap = use_priority_fee_cap();
 
     // Select fee estiamte strategy
     let host = Url::parse(&fee_url.read().0)
@@ -98,16 +100,35 @@ pub async fn get_recent_priority_fee_estimate() -> Result<u64, String> {
         }
     };
 
-    // Send request
-    let response: Value = client
+    // // Send request
+    // let response: Value = client
+    //     .post(fee_url.read().0.clone())
+    //     .json(&body)
+    //     .send()
+    //     .await
+    //     .unwrap()
+    //     .json()
+    //     .await
+    //     .unwrap();
+
+    // MI, Send request in two steps
+    // split json from send
+    // 1) handle response
+    let Ok(resp) = client
         .post(fee_url.read().0.clone())
         .json(&body)
         .send()
         .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
+    else {
+        eprintln!("didn't get dynamic fee estimate, use default instead.");
+        return Ok(priority_fee.read().0);
+    };
+
+    // 2) handle json
+    let Ok(response) = resp.json::<Value>().await else {
+        eprintln!("didn't get json data from fee estimate response, use default instead.");
+        return Ok(priority_fee.read().0);
+    };
 
     // Parse response
     let calculated_fee = match strategy {
@@ -152,16 +173,7 @@ pub async fn get_recent_priority_fee_estimate() -> Result<u64, String> {
     // Check if the calculated fee is higher than max
     match calculated_fee {
         Err(err) => Err(err),
-        Ok(fee) => {
-            // if let Some(max_fee) = self.priority_fee {
-            //     Ok(fee.min(max_fee))
-            // } else {
-            //     Ok(fee)
-            // }
-
-            // MI, set fee cap 300_000
-            Ok(fee.min(300_000))
-        }
+        Ok(fee) => Ok(fee.min(priority_fee_cap.read().0)),
     }
 }
 

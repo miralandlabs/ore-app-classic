@@ -6,10 +6,10 @@ use solana_client_wasm::solana_sdk::native_token::lamports_to_sol;
 
 use crate::{
     components::{Appearance, BackupKeypairWarning, Copyable},
-    gateway::{FEE_URL, RPC_URL},
+    gateway::{FEE_URL, PRIORITY_FEE_CAP, RPC_URL},
     hooks::{
-        use_appearance, use_explorer, use_pubkey, use_fee_url, use_rpc_url,
-        use_show_backup_warning, use_sol_balance, Explorer, FeeUrl, RpcUrl,
+        use_appearance, use_explorer, use_pubkey, use_fee_url, use_rpc_url, use_priority_fee_cap,
+        use_show_backup_warning, use_sol_balance, Explorer, FeeUrl, PriorityFeeCap, RpcUrl,
     },
     route::Route,
 };
@@ -31,6 +31,12 @@ pub fn Settings() -> Element {
     let mut fee_url_input = use_signal(|| fee_url.read().0.clone());
     let mut fee_url_error = use_signal::<Option<String>>(|| None);
     let is_fee_url_edited = fee_url.read().0.ne(&*fee_url_input.read());
+
+    // MI
+    let mut priority_fee_cap = use_priority_fee_cap();
+    let mut priority_fee_cap_input = use_signal(|| priority_fee_cap.read().0.clone());
+    let mut priority_fee_cap_error = use_signal::<Option<u64>>(|| None);
+    let is_priority_fee_cap_edited = priority_fee_cap.read().0.ne(&*priority_fee_cap_input.read());
 
     let container_class = "flex flex-row gap-8 justify-between w-full sm:px-1";
     let section_title_class = "text-lg md:text-2xl font-bold";
@@ -238,10 +244,10 @@ pub fn Settings() -> Element {
                         div {
                             p {
                                 class: "{data_title_class}",
-                                "Priority Fee Estimate"
+                                "Priority Fee Estimate URL"
                             }
                             p {
-                                class: "text-left text-white max-w-144",
+                                class: "text-left dark:text-white max-w-144",
                                 "This url is free for now and provided as-is. You are encouraged to use your own fee estimation url instead."
                             }
                         }
@@ -288,6 +294,75 @@ pub fn Settings() -> Element {
                                             class: "bg-green-500 hover:bg-green-600 active:bg-green-700 text-white rounded shrink ml-auto transition-colors px-2 py-1",
                                             onclick: move |_| {
                                                 fee_url.set(FeeUrl(fee_url_input.read().clone()));
+                                            },
+                                            "Save"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    div {
+                        class: "{container_class} flex-auto",
+                        div {
+                            p {
+                                class: "{data_title_class}",
+                                "Priority Fee Cap"
+                            }
+                            p {
+                                class: "text-left dark:text-white max-w-144",
+                                "You can set your own priority fee max value."
+                            }
+                        }
+                        div {
+                            class: "flex flex-auto flex-col gap-2",
+                            div {
+                                class: "flex flex-row flex-shrink h-min gap-1 shrink mb-auto",
+                                input {
+                                    class: "bg-transparent disabled:opacity-50 dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
+                                    dir: "rtl",
+                                    step: 100_000,
+                                    min: 0,
+                                    max: 10_000_000,
+                                    r#type: "number",
+                                    value: "{priority_fee_cap.read().0}",
+                                    oninput: move |e| {
+                                        if let Ok(v) = e.value().parse::<u64>() {
+                                            priority_fee_cap.set(PriorityFeeCap(v));
+                                        }
+                                    }
+                                }
+                                p {
+                                    class: "my-auto font-semibold",
+                                    "microlamports"
+                                }
+                            }
+                            div {
+                                class: "flex flex-shrink gap-2 justify-end",
+                                if let Some(err_str) = priority_fee_cap_error.read().clone() {
+                                    p {
+                                        class: "text-sm text-red-500 text-right",
+                                        "{err_str}"
+                                    }
+                                }
+                                div {
+                                    class: "flex flex-row gap-2",
+                                    if priority_fee_cap.read().0.ne(&PRIORITY_FEE_CAP) {
+                                        button {
+                                            class: "hover-100 active-200 rounded shrink ml-auto transition-colors px-2 py-1 font-semibold",
+                                            onclick: move |_| {
+                                                priority_fee_cap.set(PriorityFeeCap(PRIORITY_FEE_CAP));
+                                                priority_fee_cap_input.set(PRIORITY_FEE_CAP);
+                                                priority_fee_cap_error.set(None);
+                                            },
+                                            "Reset to default"
+                                        }
+                                    }
+                                    if is_priority_fee_cap_edited && priority_fee_cap_error.read().is_none() {
+                                        button {
+                                            class: "bg-green-500 hover:bg-green-600 active:bg-green-700 text-white rounded shrink ml-auto transition-colors px-2 py-1",
+                                            onclick: move |_| {
+                                                priority_fee_cap.set(PriorityFeeCap(priority_fee_cap_input.read().clone()));
                                             },
                                             "Save"
                                         }

@@ -5,10 +5,11 @@ mod pubkey;
 // MI
 use crate::{
     components::PriorityFeeStrategy,
-    hooks::{use_miner_toolbar_state, MinerStatusMessage, UpdateMinerToolbarState},
+    hooks::{use_miner_toolbar_state, MinerStatusMessage, MinerToolbarState, UpdateMinerToolbarState},
 };
 use async_std::future::{timeout, Future};
 use cached::proc_macro::cached;
+use dioxus::prelude::*;
 pub use error::*;
 use gloo_storage::{LocalStorage, Storage};
 use ore_api::{
@@ -72,7 +73,7 @@ const GATEWAY_DELAY: u64 = 0; //300;
 
 const TIP_AMOUNT: u64 = 100_000;
 const DEFAULT_CU_LIMIT: u32 = 200_000;
-const DEFAULT_CU_PRICE: u64 = 5_000;
+const DEFAULT_CU_PRICE: u64 = 10_000;
 
 pub enum ComputeBudget {
     DynamicLimitEstimatePrice,
@@ -190,6 +191,7 @@ impl Gateway {
         ixs: &[Instruction],
         compute_budget: ComputeBudget,
         skip_confirm: bool,
+        mut toolbar_state: Option<&mut Signal<MinerToolbarState>>,
     ) -> GatewayResult<Signature> {
         let signer = signer();
         // log::info!("starting use priority fee..."); // MI
@@ -272,22 +274,30 @@ impl Gateway {
         let mut tx = Transaction::new_with_payer(final_ixs.as_slice(), Some(&signer.pubkey()));
 
         // Submit tx
-        // let mut toolbar_state = use_miner_toolbar_state();
         let mut attempts = 0;
         loop {
             log::info!("Attempt: {:?}", attempts);
-            // toolbar_state.set_status_message(MinerStatusMessage::Submitting(attempts as u64, fee));
+            if toolbar_state.is_some() {
+                toolbar_state.as_mut().unwrap().set_status_message(MinerStatusMessage::Submitting(attempts as u64, fee));
+            }
+
             // Sign tx with a new blockhash (after approximately ~45 sec)
             if attempts % 10 == 0 {
                 // Reset the compute unit price
                 let fee = if strategy.eq(&PriorityFeeStrategy::Dynamic) {
-                    pfee::get_recent_priority_fee_estimate().await.unwrap()
+                    if let Ok(fee) = pfee::get_recent_priority_fee_estimate().await {
+                        fee
+                    } else {
+                        log::info!("failed to get fee estimate, use last known priority fee setting instead."); // MI
+                        fee
+                    }
                 } else {
                     fee
                 };
 
-                // toolbar_state
-                //     .set_status_message(MinerStatusMessage::Submitting(attempts as u64, fee));
+                if toolbar_state.is_some() {
+                    toolbar_state.as_mut().unwrap().set_status_message(MinerStatusMessage::Submitting(attempts as u64, fee));
+                }
 
                 final_ixs.remove(1);
                 final_ixs.insert(1, ComputeBudgetInstruction::set_compute_unit_price(fee));
@@ -381,7 +391,7 @@ impl Gateway {
         // Sign and send transaction.
         let ix = ore_api::instruction::open(signer.pubkey(), signer.pubkey(), signer.pubkey());
 
-        match self.send_and_confirm(&[ix], CB, false).await {
+        match self.send_and_confirm(&[ix], CB, false, None).await {
             Ok(_) => Ok(()),
             Err(_) => Err(GatewayError::FailedOpen),
         }
@@ -410,7 +420,7 @@ impl Gateway {
         }
         let ix = ore_api::instruction::claim(signer.pubkey(), beneficiary, amount);
         ixs.push(ix);
-        self.send_and_confirm(&ixs, CB, false).await
+        self.send_and_confirm(&ixs, CB, false, None).await
     }
 
     // MI
@@ -422,7 +432,7 @@ impl Gateway {
         let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
         let ix = ore_api::instruction::stake(signer.pubkey(), sender, amount);
 
-        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], CB, false)
+        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], CB, false, None)
             .await
     }
 
@@ -460,7 +470,7 @@ impl Gateway {
             amount,
         ));
 
-        self.send_and_confirm(&ixs, CB, false).await
+        self.send_and_confirm(&ixs, CB, false, None).await
     }
 
     pub async fn transfer_ore(
@@ -493,7 +503,7 @@ impl Gateway {
         )
         .unwrap();
 
-        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, memo_ix, transfer_ix], CB, false)
+        self.send_and_confirm(&[cu_limit_ix, cu_price_ix, memo_ix, transfer_ix], CB, false, None)
             .await
     }
 
@@ -541,7 +551,7 @@ impl Gateway {
         );
 
         match self
-            .send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], CB, false)
+            .send_and_confirm(&[cu_limit_ix, cu_price_ix, ix], CB, false, None)
             .await
         {
             Ok(_) => {}

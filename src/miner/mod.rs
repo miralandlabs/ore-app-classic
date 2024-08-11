@@ -154,7 +154,7 @@ impl Miner {
 
         // Submit solution
         log::info!("submit solution..."); // MI
-        match submit_solution(&gateway, best_solution, priority_fee).await {
+        match submit_solution(&gateway, best_solution, priority_fee, toolbar_state).await {
             // Start mining again
             Ok(sig) => {
                 log::info!("Sig: {}", sig); // MI
@@ -193,12 +193,14 @@ pub async fn submit_solution(
     gateway: &Rc<Gateway>,
     solution: Solution,
     priority_fee: u64,
+    toolbar_state: &mut Signal<MinerToolbarState>,
 ) -> GatewayResult<Signature> {
     let signer = signer();
     // let priority_fee = use_priority_fee();
     // let priority_fee_strategy = use_priority_fee_strategy();
 
     // Build ixs
+    toolbar_state.set_status_message(MinerStatusMessage::Submitting(0, priority_fee));
     let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_MINE);
     let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
     let auth_ix = ore_api::instruction::auth(utils::proof_pubkey(signer.pubkey())); // MI
@@ -223,7 +225,7 @@ pub async fn submit_solution(
 
     // Send and configm
     log::info!("starting send-and-confirm..."); // MI
-    gateway.send_and_confirm(&ixs, gateway::CB, false).await
+    gateway.send_and_confirm(&ixs, gateway::CB, false, Some(toolbar_state)).await
 }
 
 async fn needs_reset(gateway: &Rc<Gateway>) -> bool {

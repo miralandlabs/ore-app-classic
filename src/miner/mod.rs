@@ -13,7 +13,7 @@ use ore_api::{
 use rand::Rng;
 use serde_wasm_bindgen::to_value;
 use solana_client_wasm::solana_sdk::{
-    keccak::Hash as KeccakHash, compute_budget::ComputeBudgetInstruction, pubkey::Pubkey,
+    compute_budget::ComputeBudgetInstruction, keccak::Hash as KeccakHash, pubkey::Pubkey,
     signature::Signature, signer::Signer,
 };
 use web_sys::{window, Worker};
@@ -21,10 +21,13 @@ pub use web_worker::*;
 
 use crate::{
     components::PriorityFeeStrategy,
-    gateway::{self, signer, Gateway, GatewayResult, CU_LIMIT_MINE},
+    gateway::{
+        self, signer, ComputeBudget, Gateway, GatewayResult, CU_LIMIT_MINE, DEFAULT_CU_LIMIT,
+        PRIORITY_FEE_CAP,
+    },
     hooks::{
-        MinerStatus, MinerStatusMessage, MinerToolbarState, PowerLevel,
-        PriorityFee, ReadMinerToolbarState, UpdateMinerToolbarState,
+        MinerStatus, MinerStatusMessage, MinerToolbarState, PowerLevel, PriorityFee,
+        ReadMinerToolbarState, UpdateMinerToolbarState,
     },
     utils,
 };
@@ -134,19 +137,24 @@ impl Miner {
             }
         }
 
-        // let priority_fee = self.priority_fee.read().0;
         let priority_fee = if self
             .priority_fee_strategy
             .read()
-            .eq(&PriorityFeeStrategy::Dynamic)
+            .eq(&PriorityFeeStrategy::Estimate)
         {
-            gateway::get_recent_priority_fee_estimate().await.unwrap()
+            if let Ok(priority_fee) = gateway::get_recent_priority_fee_estimate().await {
+                priority_fee
+            } else {
+                PRIORITY_FEE_CAP
+            }
         } else {
             self.priority_fee.read().0
         };
+        log::info!(
+            "current priority fee strategy: {}",
+            self.priority_fee_strategy
+        );
         log::info!("current priority fee: {}", priority_fee);
-        self.priority_fee.clone().set(PriorityFee(priority_fee)); // set signal
-        log::info!("set priority fee signal: {}", priority_fee);
 
         // Update toolbar state
         toolbar_state.set_display_hash(KeccakHash::new_from_array(best_hash));
@@ -154,7 +162,15 @@ impl Miner {
 
         // Submit solution
         log::info!("submit solution..."); // MI
-        match submit_solution(&gateway, best_solution, priority_fee, toolbar_state).await {
+        match submit_solution(
+            &gateway,
+            best_solution,
+            *self.priority_fee_strategy.read(),
+            priority_fee,
+            toolbar_state,
+        )
+        .await
+        {
             // Start mining again
             Ok(sig) => {
                 log::info!("Sig: {}", sig); // MI
@@ -192,12 +208,11 @@ impl Miner {
 pub async fn submit_solution(
     gateway: &Rc<Gateway>,
     solution: Solution,
+    priority_fee_strategy: PriorityFeeStrategy,
     priority_fee: u64,
     toolbar_state: &mut Signal<MinerToolbarState>,
 ) -> GatewayResult<Signature> {
     let signer = signer();
-    // let priority_fee = use_priority_fee();
-    // let priority_fee_strategy = use_priority_fee_strategy();
 
     // Build ixs
     toolbar_state.set_status_message(MinerStatusMessage::Submitting(0, priority_fee));
@@ -224,8 +239,16 @@ pub async fn submit_solution(
     ixs.push(ix);
 
     // Send and configm
-    log::info!("starting send-and-confirm..."); // MI
-    gateway.send_and_confirm(&ixs, gateway::CB, false, Some(toolbar_state)).await
+    log::info!("starting send and confirm..."); // MI
+    let cb = match priority_fee_strategy {
+        PriorityFeeStrategy::Estimate => ComputeBudget::FixedLimitEstimatePrice(DEFAULT_CU_LIMIT),
+        PriorityFeeStrategy::Static => {
+            ComputeBudget::FixedLimitStaticPrice(DEFAULT_CU_LIMIT, priority_fee)
+        }
+    };
+    gateway
+        .send_and_confirm(&ixs, cb, false, Some(toolbar_state))
+        .await
 }
 
 async fn needs_reset(gateway: &Rc<Gateway>) -> bool {

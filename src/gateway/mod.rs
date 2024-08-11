@@ -5,7 +5,7 @@ mod pubkey;
 // MI
 use crate::{
     components::PriorityFeeStrategy,
-    hooks::{use_miner_toolbar_state, MinerStatusMessage, MinerToolbarState, UpdateMinerToolbarState},
+    hooks::{MinerStatusMessage, MinerToolbarState, UpdateMinerToolbarState},
 };
 use async_std::future::{timeout, Future};
 use cached::proc_macro::cached;
@@ -72,8 +72,8 @@ const CONFIRM_DELAY: u64 = 500;
 const GATEWAY_DELAY: u64 = 0; //300;
 
 const TIP_AMOUNT: u64 = 100_000;
-const DEFAULT_CU_LIMIT: u32 = 200_000;
-const DEFAULT_CU_PRICE: u64 = 10_000;
+pub const DEFAULT_CU_LIMIT: u32 = 200_000;
+pub const DEFAULT_CU_PRICE: u64 = 10_000;
 
 pub enum ComputeBudget {
     DynamicLimitEstimatePrice,
@@ -194,10 +194,6 @@ impl Gateway {
         mut toolbar_state: Option<&mut Signal<MinerToolbarState>>,
     ) -> GatewayResult<Signature> {
         let signer = signer();
-        // log::info!("starting use priority fee..."); // MI
-        // let priority_fee = use_priority_fee();
-        // log::info!("starting use priority fee strategy..."); // MI
-        // let priority_fee_strategy = use_priority_fee_strategy();
 
         const CUS: u32 = 1_400_000;
         // Set compute budget
@@ -208,7 +204,7 @@ impl Gateway {
                 let fee = pfee::get_recent_priority_fee_estimate().await.unwrap();
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
-                (CUS, PriorityFeeStrategy::Dynamic, fee)
+                (CUS, PriorityFeeStrategy::Estimate, fee)
             }
             ComputeBudget::DynamicLimitStaticPrice(fee) => {
                 // TODO simulate
@@ -220,7 +216,7 @@ impl Gateway {
                 let fee = pfee::get_recent_priority_fee_estimate().await.unwrap();
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
-                (cus, PriorityFeeStrategy::Dynamic, fee)
+                (cus, PriorityFeeStrategy::Estimate, fee)
             }
             ComputeBudget::FixedLimitStaticPrice(cus, fee) => {
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
@@ -284,7 +280,7 @@ impl Gateway {
             // Sign tx with a new blockhash (after approximately ~45 sec)
             if attempts % 10 == 0 {
                 // Reset the compute unit price
-                let fee = if strategy.eq(&PriorityFeeStrategy::Dynamic) {
+                let fee = if strategy.eq(&PriorityFeeStrategy::Estimate) {
                     if let Ok(fee) = pfee::get_recent_priority_fee_estimate().await {
                         fee
                     } else {

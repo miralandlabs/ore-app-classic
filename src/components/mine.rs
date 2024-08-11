@@ -270,7 +270,7 @@ pub fn PriorityFeeStrategyConfig() -> Element {
                         priority_fee_strategy.set(s);
                     }
                 },
-                option { initial_selected: priority_fee_strategy.read().eq(&PriorityFeeStrategy::Dynamic), value: "{PriorityFeeStrategy::Dynamic}", "{PriorityFeeStrategy::Dynamic}" }
+                option { initial_selected: priority_fee_strategy.read().eq(&PriorityFeeStrategy::Estimate), value: "{PriorityFeeStrategy::Estimate}", "{PriorityFeeStrategy::Estimate}" }
                 option { initial_selected: priority_fee_strategy.read().eq(&PriorityFeeStrategy::Static), value: "{PriorityFeeStrategy::Static}", "{PriorityFeeStrategy::Static}" }
             }
         }
@@ -298,7 +298,7 @@ pub fn PriorityFeeConfig() -> Element {
            div {
                 class: "flex flex-row flex-shrink h-min gap-1 shrink mb-auto",
                 input {
-                    disabled: priority_fee_strategy.read().eq(&PriorityFeeStrategy::Dynamic),
+                    disabled: priority_fee_strategy.read().eq(&PriorityFeeStrategy::Estimate),
                     class: "bg-transparent disabled:opacity-50 dark:text-white text-right px-1 mb-auto rounded font-semibold hover:bg-green-600 transition-colors",
                     dir: "rtl",
                     step: 100_000,

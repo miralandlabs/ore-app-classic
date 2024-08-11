@@ -61,7 +61,7 @@ pub fn Mine() -> Element {
                                     MinerStatusMessage::Searching => {
                                         rsx! {
                                             p {
-                                                class: "text-lg text-white",
+                                                class: "text-lg dark:text-white",
                                                 "Searching for valid hashes... "
                                                 // if time_remaining.read().gt(&0) {
                                                 //     "({time_remaining} sec)"

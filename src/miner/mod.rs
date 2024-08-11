@@ -22,7 +22,7 @@ pub use web_worker::*;
 use crate::{
     components::PriorityFeeStrategy,
     gateway::{
-        self, signer, ComputeBudget, Gateway, GatewayResult, CU_LIMIT_MINE, DEFAULT_CU_LIMIT,
+        self, signer, ComputeBudget, Gateway, GatewayResult, CU_LIMIT_MINE,
         PRIORITY_FEE_CAP,
     },
     hooks::{
@@ -242,9 +242,9 @@ pub async fn submit_solution(
     // Send and configm
     log::info!("starting send and confirm..."); // MI
     let cb = match priority_fee_strategy {
-        PriorityFeeStrategy::Estimate => ComputeBudget::FixedLimitEstimatePrice(DEFAULT_CU_LIMIT),
+        PriorityFeeStrategy::Estimate => ComputeBudget::FixedLimitEstimatePrice(CU_LIMIT_MINE), // DEFAULT_CU_LIMIT
         PriorityFeeStrategy::Static => {
-            ComputeBudget::FixedLimitStaticPrice(DEFAULT_CU_LIMIT, priority_fee)
+            ComputeBudget::FixedLimitStaticPrice(CU_LIMIT_MINE, priority_fee)
         }
     };
     gateway

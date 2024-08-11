@@ -5,14 +5,10 @@ mod pubkey;
 // MI
 use crate::{
     components::PriorityFeeStrategy,
-    hooks::{
-        use_miner_toolbar_state, use_priority_fee, use_priority_fee_strategy, MinerStatusMessage,
-        UpdateMinerToolbarState,
-    },
+    hooks::{use_miner_toolbar_state, MinerStatusMessage, UpdateMinerToolbarState},
 };
 use async_std::future::{timeout, Future};
 use cached::proc_macro::cached;
-use dioxus::signals::Readable;
 pub use error::*;
 use gloo_storage::{LocalStorage, Storage};
 use ore_api::{
@@ -53,8 +49,9 @@ use std::str::FromStr;
 use web_time::Duration;
 
 pub const API_URL: &str = "https://ore-v2-api-lthm.onrender.com"; // MI: dummy
-pub const FEE_URL: &str = "https://mainnet.helius-rpc.com/?api-key=cb135900-fab9-4a6c-acaa-9148d6585dc7"; // MI: initial setting
-                                                                  // royal: ore-app-classic ironforge RPC Endpoint
+pub const FEE_URL: &str =
+    "https://mainnet.helius-rpc.com/?api-key=cb135900-fab9-4a6c-acaa-9148d6585dc7"; // MI: initial setting
+                                                                                    // royal: ore-app-classic ironforge RPC Endpoint
 pub const RPC_URL: &str = "https://rpc.ironforge.network/mainnet?apiKey=01J3ZM0ECN63VB741S74YPCFWS";
 
 pub const PRIORITY_FEE_CAP: u64 = 1_000_000; // microlamport
@@ -75,13 +72,17 @@ const GATEWAY_DELAY: u64 = 0; //300;
 
 const TIP_AMOUNT: u64 = 100_000;
 const DEFAULT_CU_LIMIT: u32 = 200_000;
+const DEFAULT_CU_PRICE: u64 = 5_000;
 
 pub enum ComputeBudget {
-    Dynamic,
-    Fixed(u32),
+    DynamicLimitEstimatePrice,
+    DynamicLimitStaticPrice(u64), // price: u64
+    FixedLimitEstimatePrice(u32), // limit: u32
+    FixedLimitStaticPrice(u32, u64),
 }
 
-pub const CB: ComputeBudget = ComputeBudget::Fixed(DEFAULT_CU_LIMIT);
+pub const CB: ComputeBudget =
+    ComputeBudget::FixedLimitStaticPrice(DEFAULT_CU_LIMIT, DEFAULT_CU_PRICE);
 
 pub struct Gateway {
     pub rpc: WasmClient,
@@ -130,6 +131,24 @@ impl Gateway {
         retry(|| self.try_get_proof(authority)).await
     }
 
+    // pub async fn get_proof_update(
+    //     &self,
+    //     authority: Pubkey,
+    //     challenge: [u8; 32],
+    // ) -> GatewayResult<Proof> {
+    //     loop {
+    //         match retry(|| self.try_get_proof(authority)).await {
+    //             Err(err) => return Err(err),
+    //             Ok(proof) => {
+    //                 if proof.challenge.ne(&challenge) {
+    //                     return Ok(proof);
+    //                 }
+    //             }
+    //         }
+    //         async_std::task::sleep(Duration::from_millis(1000)).await;
+    //     }
+    // }
+
     pub async fn try_get_proof(&self, authority: Pubkey) -> GatewayResult<Proof> {
         let data = self
             .rpc
@@ -173,27 +192,40 @@ impl Gateway {
         skip_confirm: bool,
     ) -> GatewayResult<Signature> {
         let signer = signer();
-        log::info!("starting use priority fee..."); // MI
-        let priority_fee = use_priority_fee();
-        log::info!("starting use priority fee strategy..."); // MI
-        let priority_fee_strategy = use_priority_fee_strategy();
+        // log::info!("starting use priority fee..."); // MI
+        // let priority_fee = use_priority_fee();
+        // log::info!("starting use priority fee strategy..."); // MI
+        // let priority_fee_strategy = use_priority_fee_strategy();
 
+        const CUS: u32 = 1_400_000;
         // Set compute budget
         let mut final_ixs = vec![];
-        match compute_budget {
-            ComputeBudget::Dynamic => {
+        let (_, strategy, fee) = match compute_budget {
+            ComputeBudget::DynamicLimitEstimatePrice => {
                 // TODO simulate
-                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(1_400_000))
+                let fee = pfee::get_recent_priority_fee_estimate().await.unwrap();
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
+                (CUS, PriorityFeeStrategy::Dynamic, fee)
             }
-            ComputeBudget::Fixed(cus) => {
-                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus))
+            ComputeBudget::DynamicLimitStaticPrice(fee) => {
+                // TODO simulate
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
+                (CUS, PriorityFeeStrategy::Static, fee)
             }
-        }
-
-        // Set compute unit price
-        final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(
-            priority_fee.read().0,
-        ));
+            ComputeBudget::FixedLimitEstimatePrice(cus) => {
+                let fee = pfee::get_recent_priority_fee_estimate().await.unwrap();
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
+                (cus, PriorityFeeStrategy::Dynamic, fee)
+            }
+            ComputeBudget::FixedLimitStaticPrice(cus, fee) => {
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
+                (cus, PriorityFeeStrategy::Static, fee)
+            }
+        };
 
         // Add in user instructions
         final_ixs.extend_from_slice(ixs);
@@ -244,20 +276,14 @@ impl Gateway {
         let mut attempts = 0;
         loop {
             log::info!("Attempt: {:?}", attempts);
-            toolbar_state.set_status_message(MinerStatusMessage::Submitting(
-                attempts as u64,
-                priority_fee.read().0,
-            ));
+            toolbar_state.set_status_message(MinerStatusMessage::Submitting(attempts as u64, fee));
             // Sign tx with a new blockhash (after approximately ~45 sec)
             if attempts % 10 == 0 {
                 // Reset the compute unit price
-                let fee = if priority_fee_strategy
-                    .read()
-                    .eq(&PriorityFeeStrategy::Dynamic)
-                {
+                let fee = if strategy.eq(&PriorityFeeStrategy::Dynamic) {
                     pfee::get_recent_priority_fee_estimate().await.unwrap()
                 } else {
-                    priority_fee.read().0
+                    fee
                 };
 
                 toolbar_state
@@ -347,8 +373,6 @@ impl Gateway {
     pub async fn open_ore(&self) -> GatewayResult<()> {
         // Return early, if account is already initialized
         let signer = signer();
-        // let priority_fee = use_priority_fee();
-        // let priority_fee_strategy = use_priority_fee_strategy();
         let proof_address = proof_pubkey(signer.pubkey());
         if self.rpc.get_account(&proof_address).await.is_ok() {
             return Ok(());
@@ -356,14 +380,7 @@ impl Gateway {
 
         // Sign and send transaction.
         let ix = ore_api::instruction::open(signer.pubkey(), signer.pubkey(), signer.pubkey());
-        // let prio_fee = match *priority_fee_strategy.read() {
-        //     PriorityFeeStrategy::Dynamic => pfee::get_recent_priority_fee_estimate(true).await,
-        //     PriorityFeeStrategy::Static => priority_fee.read().0,
-        // };
-        // let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_CLAIM);
-        // let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(prio_fee);
-        // let ixs = vec![cu_limit_ix, cu_price_ix, ix];
- 
+
         match self.send_and_confirm(&[ix], CB, false).await {
             Ok(_) => Ok(()),
             Err(_) => Err(GatewayError::FailedOpen),
@@ -372,15 +389,7 @@ impl Gateway {
 
     pub async fn claim_ore(&self, amount: u64, priority_fee: u64) -> GatewayResult<Signature> {
         let signer = signer();
-        // let priority_fee_signal = use_priority_fee();
-        let priority_fee_strategy = use_priority_fee_strategy();
         let beneficiary = ore_token_account_address(signer.pubkey());
-
-        let priority_fee = match *priority_fee_strategy.read() {
-            PriorityFeeStrategy::Dynamic => pfee::get_recent_priority_fee_estimate().await.unwrap(),
-            PriorityFeeStrategy::Static => priority_fee,
-            // PriorityFeeStrategy::Static => priority_fee_signal.read().0,
-        };
 
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_CLAIM);
         let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
@@ -407,14 +416,7 @@ impl Gateway {
     // MI
     pub async fn stake_ore(&self, amount: u64, priority_fee: u64) -> GatewayResult<Signature> {
         let signer = signer();
-        // let priority_fee = use_priority_fee();
-        let priority_fee_strategy = use_priority_fee_strategy();
         let sender = ore_token_account_address(signer.pubkey());
-
-        let priority_fee = match *priority_fee_strategy.read() {
-            PriorityFeeStrategy::Dynamic => pfee::get_recent_priority_fee_estimate().await.unwrap(),
-            PriorityFeeStrategy::Static => priority_fee,
-        };
 
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_STAKE);
         let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
@@ -427,13 +429,6 @@ impl Gateway {
     // MI
     pub async fn upgrade_ore(&self, amount: u64, priority_fee: u64) -> GatewayResult<Signature> {
         let signer = signer();
-        // let priority_fee = use_priority_fee();
-        let priority_fee_strategy = use_priority_fee_strategy();
-
-        let priority_fee = match *priority_fee_strategy.read() {
-            PriorityFeeStrategy::Dynamic => pfee::get_recent_priority_fee_estimate().await.unwrap(),
-            PriorityFeeStrategy::Static => priority_fee,
-        };
 
         // Build initial ixs
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_UPGRADE);
@@ -480,16 +475,9 @@ impl Gateway {
 
         // Submit transfer ix
         let signer = signer();
-        // let priority_fee = use_priority_fee();
-        let priority_fee_strategy = use_priority_fee_strategy();
 
         let from_token_account = ore_token_account_address(signer.pubkey());
         let to_token_account = ore_token_account_address(to);
-
-        let priority_fee = match *priority_fee_strategy.read() {
-            PriorityFeeStrategy::Dynamic => pfee::get_recent_priority_fee_estimate().await.unwrap(),
-            PriorityFeeStrategy::Static => priority_fee,
-        };
 
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_TRANSFER);
         let cu_price_ix = ComputeBudgetInstruction::set_compute_unit_price(priority_fee);
@@ -516,8 +504,6 @@ impl Gateway {
     ) -> GatewayResult<Pubkey> {
         // Build instructions.
         let signer = signer();
-        // let priority_fee = use_priority_fee();
-        let priority_fee_strategy = use_priority_fee_strategy();
 
         // Check if account already exists.
         let token_account_address = ore_token_account_address(owner);
@@ -542,11 +528,6 @@ impl Gateway {
                 }
             }
         }
-
-        let priority_fee = match *priority_fee_strategy.read() {
-            PriorityFeeStrategy::Dynamic => pfee::get_recent_priority_fee_estimate().await.unwrap(),
-            PriorityFeeStrategy::Static => priority_fee,
-        };
 
         // account not exist, create ata
         let cu_limit_ix = ComputeBudgetInstruction::set_compute_unit_limit(CU_LIMIT_CREATE_ATA);

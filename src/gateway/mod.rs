@@ -272,11 +272,11 @@ impl Gateway {
         let mut tx = Transaction::new_with_payer(final_ixs.as_slice(), Some(&signer.pubkey()));
 
         // Submit tx
-        let mut toolbar_state = use_miner_toolbar_state();
+        // let mut toolbar_state = use_miner_toolbar_state();
         let mut attempts = 0;
         loop {
             log::info!("Attempt: {:?}", attempts);
-            toolbar_state.set_status_message(MinerStatusMessage::Submitting(attempts as u64, fee));
+            // toolbar_state.set_status_message(MinerStatusMessage::Submitting(attempts as u64, fee));
             // Sign tx with a new blockhash (after approximately ~45 sec)
             if attempts % 10 == 0 {
                 // Reset the compute unit price
@@ -286,8 +286,8 @@ impl Gateway {
                     fee
                 };
 
-                toolbar_state
-                    .set_status_message(MinerStatusMessage::Submitting(attempts as u64, fee));
+                // toolbar_state
+                //     .set_status_message(MinerStatusMessage::Submitting(attempts as u64, fee));
 
                 final_ixs.remove(1);
                 final_ixs.insert(1, ComputeBudgetInstruction::set_compute_unit_price(fee));

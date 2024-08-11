@@ -40,7 +40,7 @@ pub fn MinerToolbarActive(miner: Signal<Miner>) -> Element {
                     MinerStatusMessage::Submitting(attempts, priority_fee) => {
                         rsx! {
                             p {
-                                class: "truncate flex-shrink flex-auto text-sm text-white font-medium opacity-80 my-auto ml-2",
+                                class: "truncate flex-shrink flex-auto text-sm dark:text-white font-medium opacity-80 my-auto ml-2",
                                 "Submitting transaction... (attempt {attempts}, priority fee {priority_fee} microlamports)"
                             }
                         }

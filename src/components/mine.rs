@@ -74,7 +74,7 @@ pub fn Mine() -> Element {
                                             div {
                                                 class: "flex flex-row gap-2",
                                                 p {
-                                                    class: "text-lg text-white",
+                                                    class: "text-lg dark:text-white",
                                                     "Submitting transaction... (attempt {attempts}, priority fee {priority_fee} microlamports)"
                                                 }
                                                 Spinner {

@@ -61,7 +61,7 @@ pub const CU_LIMIT_CREATE_ATA: u32 = 85_000; // MI added
 pub const CU_LIMIT_CLAIM: u32 = 12_000;
 pub const CU_LIMIT_STAKE: u32 = 12_000; // MI added
 pub const CU_LIMIT_TRANSFER: u32 = 30_000; // MI added, incl. memo
-pub const CU_LIMIT_MINE: u32 = 500_000; // MI vanilla: 500_000;
+pub const CU_LIMIT_MINE: u32 = 1_400_000; // MI vanilla: 500_000;
 pub const CU_LIMIT_UPGRADE: u32 = 30_000; // MI
 
 const RPC_RETRIES: usize = 0;
@@ -204,24 +204,24 @@ impl Gateway {
             ComputeBudget::DynamicLimitEstimatePrice => {
                 // TODO simulate
                 let fee = pfee::get_recent_priority_fee_estimate().await.unwrap();
-                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
+                // final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
                 (CUS, PriorityFeeStrategy::Estimate, fee)
             }
             ComputeBudget::DynamicLimitStaticPrice(fee) => {
                 // TODO simulate
-                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
+                // final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
                 (CUS, PriorityFeeStrategy::Static, fee)
             }
             ComputeBudget::FixedLimitEstimatePrice(cus) => {
                 let fee = pfee::get_recent_priority_fee_estimate().await.unwrap();
-                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
+                // final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
                 (cus, PriorityFeeStrategy::Estimate, fee)
             }
             ComputeBudget::FixedLimitStaticPrice(cus, fee) => {
-                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
+                // final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
                 (cus, PriorityFeeStrategy::Static, fee)
             }
@@ -343,11 +343,11 @@ impl Gateway {
                                                 }
                                             }
                                         } else {
-                                            log::info!("No confirmation status available yet for current signature status.");
+                                            log::info!("No confirmation status available for current signature status.");
                                         }
                                     } else {
                                         // MI
-                                        log::info!("No status available yet for current signature.");
+                                        log::info!("No status available for current signature.");
                                     }
                                 }
                             }

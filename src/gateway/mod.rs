@@ -75,6 +75,7 @@ const TIP_AMOUNT: u64 = 100_000;
 pub const DEFAULT_CU_LIMIT: u32 = 200_000;
 pub const DEFAULT_CU_PRICE: u64 = 10_000;
 
+#[allow(dead_code)]
 pub enum ComputeBudget {
     DynamicLimitEstimatePrice,
     DynamicLimitStaticPrice(u64), // price: u64
@@ -85,7 +86,8 @@ pub enum ComputeBudget {
 pub const CB: ComputeBudget =
     ComputeBudget::FixedLimitStaticPrice(DEFAULT_CU_LIMIT, DEFAULT_CU_PRICE);
 
-pub struct Gateway {
+    #[allow(dead_code)]
+    pub struct Gateway {
     pub rpc: WasmClient,
     api_url: String,
     rpc_url: String,
@@ -327,37 +329,38 @@ impl Gateway {
                         match self.rpc.get_signature_statuses(&[sig]).await {
                             Ok(signature_statuses) => {
                                 for signature_status in signature_statuses {
-                                    if let Some(signature_status) = signature_status.as_ref() {
-                                        if signature_status.confirmation_status.is_some() {
-                                            if let Some(current_commitment) =
-                                                signature_status.confirmation_status.as_ref()
-                                            {
-                                                log::info!("Commitment: {:?}", current_commitment);
-                                                match current_commitment {
-                                                    TransactionConfirmationStatus::Processed => {}
-                                                    TransactionConfirmationStatus::Confirmed
-                                                    | TransactionConfirmationStatus::Finalized => {
-                                                        log::info!("Confirmed: true");
-                                                        return Ok(sig);
-                                                    }
+                                    if let Some(signature_status) = signature_status { // .as_ref()
+                                        if let Some(err) = signature_status.err {
+                                            log::error!("Error: {err}");
+                                            return Err(GatewayError::Unknown);
+                                        } else if let Some(confirmation) = signature_status.confirmation_status {
+                                            match confirmation {
+                                                TransactionConfirmationStatus::Processed => {}
+                                                TransactionConfirmationStatus::Confirmed
+                                                | TransactionConfirmationStatus::Finalized => {
+                                                    log::info!("Tx sig confirmed: true");
+                                                    return Ok(sig);
                                                 }
                                             }
                                         } else {
-                                            log::info!("No status");
+                                            log::info!("No confirmation status available yet for current signature status.");
                                         }
+                                    } else {
+                                        // MI
+                                        log::info!("No status available yet for current signature.");
                                     }
                                 }
                             }
 
                             // Handle confirmation errors
                             Err(err) => {
-                                log::error!("Error confirming: {:?}", err);
+                                log::error!("Error confirming tx: {:?}", err);
                             }
                         }
                     }
 
                     // Failed to confirm tx
-                    log::info!("Confirmed: false");
+                    log::info!("Tx sig confirmed: false");
                 }
 
                 // Handle submit errors

@@ -204,24 +204,24 @@ impl Gateway {
             ComputeBudget::DynamicLimitEstimatePrice => {
                 // TODO simulate
                 let fee = pfee::get_recent_priority_fee_estimate().await.unwrap();
-                // final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
                 (CUS, PriorityFeeStrategy::Estimate, fee)
             }
             ComputeBudget::DynamicLimitStaticPrice(fee) => {
                 // TODO simulate
-                // final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(CUS));
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
                 (CUS, PriorityFeeStrategy::Static, fee)
             }
             ComputeBudget::FixedLimitEstimatePrice(cus) => {
                 let fee = pfee::get_recent_priority_fee_estimate().await.unwrap();
-                // final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
                 (cus, PriorityFeeStrategy::Estimate, fee)
             }
             ComputeBudget::FixedLimitStaticPrice(cus, fee) => {
-                // final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
+                final_ixs.push(ComputeBudgetInstruction::set_compute_unit_limit(cus));
                 final_ixs.push(ComputeBudgetInstruction::set_compute_unit_price(fee));
                 (cus, PriorityFeeStrategy::Static, fee)
             }
@@ -230,35 +230,35 @@ impl Gateway {
         // Add in user instructions
         final_ixs.extend_from_slice(ixs);
 
-        // // Add tip collection instructions
-        // if self.rpc_url.eq(RPC_URL) {
-        //     let mut rng = rand::thread_rng();
-        //     let tip_accounts = &[
-        //         // Miraland donation account only
-        //         Pubkey::from_str("9h9TXFtSsDAiL5kpCRZuKUxPE4Nv3W56fcSyUC3zmQip").unwrap(),
-        //     ];
-        //     let i = rng.gen_range(0..tip_accounts.len());
-        //     let ix = solana_sdk::system_instruction::transfer(
-        //         &signer.pubkey(),
-        //         &tip_accounts[i],
-        //         TIP_AMOUNT,
-        //     );
-        //     final_ixs.push(ix);
-        // } else {
-        //     // half tip
-        //     let mut rng = rand::thread_rng();
-        //     let tip_accounts = &[
-        //         // Miraland donation account only
-        //         Pubkey::from_str("9h9TXFtSsDAiL5kpCRZuKUxPE4Nv3W56fcSyUC3zmQip").unwrap(),
-        //     ];
-        //     let i = rng.gen_range(0..tip_accounts.len());
-        //     let ix = solana_sdk::system_instruction::transfer(
-        //         &signer.pubkey(),
-        //         &tip_accounts[i],
-        //         TIP_AMOUNT / 2,
-        //     );
-        //     final_ixs.push(ix);
-        // }
+        // Add tip collection instructions
+        if self.rpc_url.eq(RPC_URL) {
+            let mut rng = rand::thread_rng();
+            let tip_accounts = &[
+                // Miraland donation account only
+                Pubkey::from_str("9h9TXFtSsDAiL5kpCRZuKUxPE4Nv3W56fcSyUC3zmQip").unwrap(),
+            ];
+            let i = rng.gen_range(0..tip_accounts.len());
+            let ix = solana_sdk::system_instruction::transfer(
+                &signer.pubkey(),
+                &tip_accounts[i],
+                TIP_AMOUNT,
+            );
+            final_ixs.push(ix);
+        } else {
+            // half tip
+            let mut rng = rand::thread_rng();
+            let tip_accounts = &[
+                // Miraland donation account only
+                Pubkey::from_str("9h9TXFtSsDAiL5kpCRZuKUxPE4Nv3W56fcSyUC3zmQip").unwrap(),
+            ];
+            let i = rng.gen_range(0..tip_accounts.len());
+            let ix = solana_sdk::system_instruction::transfer(
+                &signer.pubkey(),
+                &tip_accounts[i],
+                TIP_AMOUNT / 2,
+            );
+            final_ixs.push(ix);
+        }
 
         // Build tx
         let send_cfg = RpcSendTransactionConfig {

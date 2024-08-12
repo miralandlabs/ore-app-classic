@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 
+#[allow(dead_code)]
 pub enum ScreenSize {
     Desktop,
     Tablet,

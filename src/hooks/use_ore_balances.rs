@@ -53,5 +53,6 @@ impl UiTokenAmountDefault for UiTokenAmount {
 #[derive(Clone)]
 pub struct Balances {
     pub v1: UiTokenAmount,
+    #[allow(dead_code)]
     pub v2: UiTokenAmount,
 }

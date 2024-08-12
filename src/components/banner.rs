@@ -3,6 +3,7 @@ use dioxus::prelude::*;
 #[derive(Clone, PartialEq)]
 pub enum BannerStyle {
     Info,
+    #[allow(dead_code)]
     Error,
 }
 

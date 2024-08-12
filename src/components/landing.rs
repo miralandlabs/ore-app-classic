@@ -18,6 +18,7 @@ use crate::{
     utils::asset_path,
 };
 
+#[allow(dead_code)]
 #[derive(Copy, Clone, PartialEq, Eq)]
 enum TextColor {
     Black,

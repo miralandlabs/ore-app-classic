@@ -230,35 +230,35 @@ impl Gateway {
         // Add in user instructions
         final_ixs.extend_from_slice(ixs);
 
-        // Add tip collection instructions
-        if self.rpc_url.eq(RPC_URL) {
-            let mut rng = rand::thread_rng();
-            let tip_accounts = &[
-                // Miraland donation account only
-                Pubkey::from_str("9h9TXFtSsDAiL5kpCRZuKUxPE4Nv3W56fcSyUC3zmQip").unwrap(),
-            ];
-            let i = rng.gen_range(0..tip_accounts.len());
-            let ix = solana_sdk::system_instruction::transfer(
-                &signer.pubkey(),
-                &tip_accounts[i],
-                TIP_AMOUNT,
-            );
-            final_ixs.push(ix);
-        } else {
-            // half tip
-            let mut rng = rand::thread_rng();
-            let tip_accounts = &[
-                // Miraland donation account only
-                Pubkey::from_str("9h9TXFtSsDAiL5kpCRZuKUxPE4Nv3W56fcSyUC3zmQip").unwrap(),
-            ];
-            let i = rng.gen_range(0..tip_accounts.len());
-            let ix = solana_sdk::system_instruction::transfer(
-                &signer.pubkey(),
-                &tip_accounts[i],
-                TIP_AMOUNT / 2,
-            );
-            final_ixs.push(ix);
-        }
+        // // Add tip collection instructions
+        // if self.rpc_url.eq(RPC_URL) {
+        //     let mut rng = rand::thread_rng();
+        //     let tip_accounts = &[
+        //         // Miraland donation account only
+        //         Pubkey::from_str("9h9TXFtSsDAiL5kpCRZuKUxPE4Nv3W56fcSyUC3zmQip").unwrap(),
+        //     ];
+        //     let i = rng.gen_range(0..tip_accounts.len());
+        //     let ix = solana_sdk::system_instruction::transfer(
+        //         &signer.pubkey(),
+        //         &tip_accounts[i],
+        //         TIP_AMOUNT,
+        //     );
+        //     final_ixs.push(ix);
+        // } else {
+        //     // half tip
+        //     let mut rng = rand::thread_rng();
+        //     let tip_accounts = &[
+        //         // Miraland donation account only
+        //         Pubkey::from_str("9h9TXFtSsDAiL5kpCRZuKUxPE4Nv3W56fcSyUC3zmQip").unwrap(),
+        //     ];
+        //     let i = rng.gen_range(0..tip_accounts.len());
+        //     let ix = solana_sdk::system_instruction::transfer(
+        //         &signer.pubkey(),
+        //         &tip_accounts[i],
+        //         TIP_AMOUNT / 2,
+        //     );
+        //     final_ixs.push(ix);
+        // }
 
         // Build tx
         let send_cfg = RpcSendTransactionConfig {

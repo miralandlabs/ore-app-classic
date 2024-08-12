@@ -144,7 +144,7 @@ impl Miner {
         {
             if let Ok(priority_fee) = gateway::get_recent_priority_fee_estimate().await {
                 // TODO: to optimze, MI
-                priority_fee + 10_000
+                priority_fee // + 10_000
             } else {
                 PRIORITY_FEE_CAP
             }

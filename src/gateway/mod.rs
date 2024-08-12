@@ -61,7 +61,7 @@ pub const CU_LIMIT_CREATE_ATA: u32 = 85_000; // MI added
 pub const CU_LIMIT_CLAIM: u32 = 12_000;
 pub const CU_LIMIT_STAKE: u32 = 12_000; // MI added
 pub const CU_LIMIT_TRANSFER: u32 = 30_000; // MI added, incl. memo
-pub const CU_LIMIT_MINE: u32 = 1_000_000; // MI vanilla: 500_000;
+pub const CU_LIMIT_MINE: u32 = 500_000; // MI vanilla: 500_000;
 pub const CU_LIMIT_UPGRADE: u32 = 30_000; // MI
 
 const RPC_RETRIES: usize = 0;
@@ -71,7 +71,7 @@ const CONFIRM_RETRIES: usize = 8;
 const CONFIRM_DELAY: u64 = 500;
 const GATEWAY_DELAY: u64 = 0; //300;
 
-const TIP_AMOUNT: u64 = 100_000;
+const TIP_AMOUNT: u64 = 100_000; // lamports
 pub const DEFAULT_CU_LIMIT: u32 = 200_000;
 pub const DEFAULT_CU_PRICE: u64 = 10_000;
 
